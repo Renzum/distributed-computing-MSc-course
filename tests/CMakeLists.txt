@@ -12,19 +12,12 @@ endif()
 
 set(TEST_SOURCES test_hello_world.cpp)
 
-if(MPI_CXX_FOUND)
-    list(APPEND TEST_SOURCES gtest_mpi_main.cpp)
-else()
-    list(APPEND TEST_SOURCES gtest_main.cpp)
-endif()
+list(APPEND TEST_SOURCES gtest_mpi_main.cpp)
 
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE lib GTest::gtest)
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-if(MPI_CXX_FOUND)
-    target_link_libraries(tests PRIVATE MPI::MPI_CXX)
-endif()
 
 include(GoogleTest)
 gtest_discover_tests(tests)
