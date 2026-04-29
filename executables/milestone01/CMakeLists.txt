@@ -1,0 +1,3 @@
+add_executable(milestone01 main.cpp)
+target_link_libraries(milestone01 PRIVATE lib)
+target_include_directories(milestone01 PRIVATE include)
