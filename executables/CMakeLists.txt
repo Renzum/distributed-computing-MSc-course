@@ -6,3 +6,4 @@ target_link_libraries(main PRIVATE lib)
 
 add_subdirectory(milestone01)
 add_subdirectory(milestone02)
+add_subdirectory(milestone03)
