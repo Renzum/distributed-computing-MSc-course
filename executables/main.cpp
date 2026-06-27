@@ -1,9 +1,8 @@
 #include "hello.h"
-#include <iostream>
-#include <filesystem>
-#include <mpi.h>
 #include <Kokkos_Core.hpp>
-
+#include <filesystem>
+#include <iostream>
+#include <mpi.h>
 
 int main(int argc, char *argv[]) {
     int rank = 0, size = 1;
@@ -18,12 +17,13 @@ int main(int argc, char *argv[]) {
     std::cout << "Hello I am rank " << rank << " of " << size << "\n";
 
     if (rank == 0)
-      hello_world();
+        hello_world();
 
     auto input_path = "./simulation_test_input.txt";
 
     if (not std::filesystem::exists(input_path))
-      std::cerr << "warning: could not find input file " << input_path << "\n";
+        std::cerr << "warning: could not find input file " << input_path
+                  << "\n";
 
     Kokkos::finalize();
     MPI_Finalize();

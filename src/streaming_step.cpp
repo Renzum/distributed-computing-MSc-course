@@ -51,8 +51,8 @@ std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
     return std::tuple<int, int>(new_x, new_y);
 }
 
-void streaming_step(Kokkos::View<double ***> &previous_distribution,
-                    Kokkos::View<double ***> &current_distribution,
+void streaming_step(Kokkos::View<double ***> &buffer_distribution_view,
+                    Kokkos::View<double ***> &distribution_function,
                     int grid_width, int grid_height) {
     Kokkos::parallel_for(
         "Streaming Step",
@@ -62,9 +62,9 @@ void streaming_step(Kokkos::View<double ***> &previous_distribution,
             auto [x, y] = calculate_new_position(x_idx, y_idx, dir, grid_width,
                                                  grid_height);
 
-            previous_distribution(x, y, dir) =
-                current_distribution(x_idx, y_idx, dir);
+            buffer_distribution_view(x, y, dir) =
+                distribution_function(x_idx, y_idx, dir);
         });
 
-    Kokkos::kokkos_swap(current_distribution, previous_distribution);
+    Kokkos::kokkos_swap(distribution_function, buffer_distribution_view);
 }

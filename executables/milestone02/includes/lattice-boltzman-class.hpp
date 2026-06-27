@@ -24,8 +24,8 @@ class LatticeBoltzman {
 
     std::ofstream distribution_output_file;
 
-    Kokkos::View<double ***> current_distribution;
-    Kokkos::View<double ***> previous_distribution;
+    Kokkos::View<double ***> distribution_function;
+    Kokkos::View<double ***> buffer_distribution_view;
 
   public:
     LatticeBoltzman(int, int);

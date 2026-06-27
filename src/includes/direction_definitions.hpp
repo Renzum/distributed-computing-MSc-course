@@ -12,3 +12,7 @@ enum Direction {
     DownLeft = 7,
     DownRight = 8,
 };
+
+constexpr std::tuple<int, int> velocity_vector[] = {{0, 0},  {1, 0},   {0, 1},
+                                                    {-1, 0}, {0, -1},  {1, 1},
+                                                    {-1, 1}, {-1, -1}, {1, -1}};

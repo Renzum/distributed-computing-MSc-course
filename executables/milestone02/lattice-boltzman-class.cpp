@@ -9,9 +9,9 @@ LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height) {
     this->grid_width = grid_width;
     this->grid_height = grid_height;
 
-    previous_distribution = Kokkos::View<double ***>(
+    buffer_distribution_view = Kokkos::View<double ***>(
         "Previous Density Function", grid_width, grid_height, TOTAL_DIRECTIONS);
-    current_distribution = Kokkos::View<double ***>(
+    distribution_function = Kokkos::View<double ***>(
         "Current Density Function", grid_width, grid_height, TOTAL_DIRECTIONS);
 
     auto rand = Kokkos::Random_XorShift64_Pool<>(/* seed = */ 12345);
@@ -23,7 +23,7 @@ LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height) {
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
             auto gen = rand.get_state();
 
-            current_distribution(x, y, dir) = x + y + dir + gen.rand(0, 100);
+            distribution_function(x, y, dir) = x + y + dir + gen.rand(0, 100);
 
             rand.free_state(gen);
         });
@@ -87,11 +87,11 @@ void LatticeBoltzman::calculate_next_step() {
             auto [x, y] = calculate_new_position(x_idx, y_idx, dir, grid_width,
                                                  grid_height);
 
-            previous_distribution(x, y, dir) =
-                current_distribution(x_idx, y_idx, dir);
+            buffer_distribution_view(x, y, dir) =
+                distribution_function(x_idx, y_idx, dir);
         });
 
-    Kokkos::kokkos_swap(current_distribution, previous_distribution);
+    Kokkos::kokkos_swap(distribution_function, buffer_distribution_view);
     iteration_count++;
 }
 
@@ -104,7 +104,7 @@ void LatticeBoltzman::current_distribution_to_file() {
                 distribution_output_file << "y: " << y << ", ";
                 distribution_output_file << "dir: " << dir << ", ";
                 distribution_output_file
-                    << "val: " << current_distribution(x, y, dir) << "}"
+                    << "val: " << distribution_function(x, y, dir) << "}"
                     << std::endl;
             }
         }
