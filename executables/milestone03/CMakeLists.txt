@@ -1,4 +1,3 @@
-add_executable(milestone03 main.cpp lattice-boltzman-class.cpp)
-target_include_directories(milestone03 PRIVATE includes)
+add_executable(milestone03 main.cpp)
 
-target_link_libraries(milestone03 PUBLIC MPI::MPI_CXX Eigen3::Eigen Kokkos::kokkos)
+target_link_libraries(milestone03 PUBLIC lib MPI::MPI_CXX Eigen3::Eigen Kokkos::kokkos)
