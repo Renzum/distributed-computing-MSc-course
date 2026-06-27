@@ -1,3 +1,9 @@
+/*
+   A half-assed implementation of the monte-carlo pi calculation that we did
+   in class which I tried to follow along. Not relevant to Lattice-Boltzmann.
+   Kept for reference and nostalgia.
+*/
+
 #include <iostream>
 #include <ostream>
 
