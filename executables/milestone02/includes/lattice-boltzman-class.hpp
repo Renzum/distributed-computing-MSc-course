@@ -32,6 +32,6 @@ class LatticeBoltzman {
 
     ~LatticeBoltzman();
 
-    void calculate_next_step();
+    void lbm_step();
     void current_distribution_to_file();
 };

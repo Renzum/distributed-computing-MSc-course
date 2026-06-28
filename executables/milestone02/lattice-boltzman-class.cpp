@@ -78,7 +78,7 @@ std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
     return std::tuple<int, int>(new_x, new_y);
 }
 
-void LatticeBoltzman::calculate_next_step() {
+void LatticeBoltzman::lbm_step() {
     Kokkos::parallel_for(
         "Streaming Step",
         Kokkos::MDRangePolicy(

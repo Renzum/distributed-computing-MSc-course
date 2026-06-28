@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 
     auto lb = LatticeBoltzman(GRID_WIDTH, GRID_HEIGHT);
 
-    lb.calculate_next_step();
+    lb.lbm_step();
     lb.current_distribution_to_file();
 
     // {

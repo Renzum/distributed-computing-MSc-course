@@ -1,15 +1,10 @@
-#include <tuple>
-
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
-#include <density_calculation.hpp>
 #include <direction_definitions.hpp>
-#include <equilibrium_distribution_calculation.hpp>
-#include <local_velocity_calculation.hpp>
-#include <streaming_step.hpp>
+#include <lattice_boltzman_impl.hpp>
 
-#include "lattice-boltzman-class.hpp"
+#include "lattice_boltzman_class.hpp"
 
 LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height,
                                  double viscocity) {
@@ -56,53 +51,42 @@ LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height,
     calculate_equilibrium_distribution_function();
 
     current_distribution_to_file(); // Output initial distribution on creation
-
-    // Calculate starting density and output to file
-    calculate_density_function();
     current_density_to_file();
-
-    calculate_local_average_velocity_function();
 }
 
-void LatticeBoltzman::calculate_next_step() {
+void LatticeBoltzman::lbm_step() {
     iteration_count++;
 
-    streaming_step(buffer_distribution_view, distribution_function, grid_width,
-                   grid_height);
+    LBMImpl::streaming_step(buffer_distribution_view, distribution_function,
+                            grid_width, grid_height);
 }
 
 void LatticeBoltzman::calculate_density_function() {
-    calculate_density(density_function, distribution_function, grid_width,
-                      grid_height);
+    LBMImpl::calculate_density(density_function, distribution_function,
+                               grid_width, grid_height);
 }
 
 void LatticeBoltzman::calculate_local_average_velocity_function() {
-    calculate_local_average_velocity(local_average_velocity,
-                                     distribution_function, density_function,
-                                     grid_width, grid_height);
+    LBMImpl::calculate_local_average_velocity(
+        local_average_velocity, distribution_function, density_function,
+        grid_width, grid_height);
 }
 
 void LatticeBoltzman::calculate_equilibrium_distribution_function() {
-    calculate_equilibrium_distribution(buffer_distribution_view,
-                                       density_function, local_average_velocity,
-                                       grid_width, grid_height);
-
-    Kokkos::parallel_for(
-        "Relaxation",
-        Kokkos::MDRangePolicy({0, 0, 0},
-                              {grid_width, grid_height, TOTAL_DIRECTIONS}),
-        KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
-            const double distribution_value = distribution_function(x, y, dir);
-            const double eq_distribution_value =
-                buffer_distribution_view(x, y, dir);
-
-            buffer_distribution_view(x, y, dir) =
-                distribution_value +
-                viscocity * (eq_distribution_value - distribution_value);
-        });
-
-    Kokkos::kokkos_swap(buffer_distribution_view, distribution_function);
+    // Calculates the equilibrium distribution and stores it in the buffer
+    LBMImpl::calculate_equilibrium_distribution(
+        buffer_distribution_view, density_function, local_average_velocity,
+        grid_width, grid_height);
 }
+
+void LatticeBoltzman::calculate_relaxed_distribution_function() {
+    // The distribution function values become relaxed
+    // ACHTUNG: The buffer remains the eq distribution
+    LBMImpl::relax_distribution(distribution_function, buffer_distribution_view,
+                                viscocity, grid_width, grid_height);
+}
+
+// Outputting the Views to Files
 
 void LatticeBoltzman::current_distribution_to_file() {
     for (int x = 0; x < grid_width; x++) {
@@ -132,7 +116,7 @@ void LatticeBoltzman::current_density_to_file() {
     }
 }
 
-void LatticeBoltzman::current_density_to_file() {
+void LatticeBoltzman::current_local_average_velocity_to_file() {
     for (int x = 0; x < grid_width; x++) {
         for (int y = 0; y < grid_height; y++) {
             local_average_velocity_output_file << "{it: " << iteration_count
