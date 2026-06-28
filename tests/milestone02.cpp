@@ -3,10 +3,10 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
-#include <density_calculation.hpp>
 #include <direction_definitions.hpp>
-#include <streaming_step.hpp>
+#include <lattice_boltzman_impl.hpp>
 
+namespace {
 void random_distribution(const Kokkos::View<double ***> view, int grid_width,
                          int grid_height) {
     auto rand = Kokkos::Random_XorShift64_Pool<>(/* seed = */ 12345);
@@ -22,8 +22,9 @@ void random_distribution(const Kokkos::View<double ***> view, int grid_width,
             rand.free_state(gen);
         });
 }
+} // namespace
 
-TEST(MILESTONE03, STREAMING_STEP) {
+TEST(MILESTONE02, STREAMING_STEP) {
     const int grid_width = 3;
     const int grid_height = 3;
 
@@ -35,8 +36,8 @@ TEST(MILESTONE03, STREAMING_STEP) {
 
     random_distribution(distribution_function, grid_width, grid_height);
 
-    streaming_step(buffer_distribution_view, distribution_function, grid_width,
-                   grid_height);
+    LBMImpl::streaming_step(buffer_distribution_view, distribution_function,
+                            grid_width, grid_height);
 
     ASSERT_EQ(buffer_distribution_view(0, 0, Direction::Center),
               distribution_function(0, 0, Direction::Center))
@@ -85,33 +86,4 @@ TEST(MILESTONE03, STREAMING_STEP) {
     ASSERT_EQ(buffer_distribution_view(0, 0, Direction::DownLeft),
               distribution_function(2, 2, Direction::DownLeft))
         << "Values wrap around borders correctly.";
-}
-
-TEST(MILESTONE03, DENSITY_CALCULATION) {
-    const int grid_width = 3;
-    const int grid_height = 3;
-
-    auto distribution_function = Kokkos::View<double ***>(
-        "Current Distribution", grid_width, grid_height, TOTAL_DIRECTIONS);
-
-    auto density_function =
-        Kokkos::View<double **>("Density Function", grid_width, grid_height);
-
-    random_distribution(distribution_function, grid_width, grid_height);
-
-    calculate_density(density_function, distribution_function, grid_width,
-                      grid_height);
-
-    for (int x = 0; x < grid_width; x++) {
-        for (int y = 0; y < grid_height; y++) {
-
-            double expected_density = 0;
-            for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                expected_density += distribution_function(x, y, dir);
-            }
-
-            ASSERT_EQ(density_function(x, y), expected_density)
-                << "Density of each cell is the sum of all values.";
-        }
-    }
 }

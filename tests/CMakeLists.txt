@@ -10,13 +10,13 @@ if(NOT GTest_FOUND)
     FetchContent_MakeAvailable(googletest)
 endif()
 
-set(TEST_SOURCES test_streaming_step.cpp)
+set(TEST_SOURCES milestone02.cpp milestone03.cpp)
 
 list(APPEND TEST_SOURCES gtest_mpi_main.cpp)
 
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE lib GTest::gtest)
-target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../src/includes)
+target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/../src/includes/private)
 
 
 include(GoogleTest)

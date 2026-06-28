@@ -1,3 +1,4 @@
+#include <cmath>
 #include <tuple>
 
 #include <Kokkos_Core.hpp>
@@ -9,15 +10,6 @@
 namespace LBMImpl {
 
 namespace {
-
-constexpr std::tuple<int, int> velocity_vector[] = {{0, 0},  {1, 0},   {0, 1},
-                                                    {-1, 0}, {0, -1},  {1, 1},
-                                                    {-1, 1}, {-1, -1}, {1, -1}};
-
-constexpr double velocity_fraction[] = {
-    4.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,
-    1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0,
-};
 
 std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
                                                    const int &direction,
@@ -94,11 +86,20 @@ void calculate_equilibrium_distribution(
     const Kokkos::View<double ***> &local_average_velocity_function,
     const int grid_width, const int grid_height) {
 
+    // Calculate constants at compile time
+    constexpr double C1 = 3.0;
+    constexpr double C2 = 1.0;
+    constexpr double C3 = 9.0 / 2.0;
+    constexpr double C4 = -3.0 / 2.0;
+
     Kokkos::parallel_for(
         "Equilibrium Distribution Calculation",
         Kokkos::MDRangePolicy({0, 0, 0},
                               {grid_width, grid_height, TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
+            // This is where the fun begins
+
+            // Precompute the w_i * rho coefficient
             const double coefficient =
                 velocity_fraction[dir] * density_function(x, y);
 
@@ -109,16 +110,30 @@ void calculate_equilibrium_distribution(
             const double avg_velocity_y =
                 local_average_velocity_function(x, y, 1);
 
-            const double dot_product = velocity_vec_x * avg_velocity_x +
-                                       velocity_vec_y * avg_velocity_y;
+            // We use FMA to reduce floating point rounding errors as much as
+            // possible
 
+            // c_ix * ux + c_iy * uy
+            const double dot_product =
+                std::fma(velocity_vec_x, avg_velocity_x,
+                         velocity_vec_y * avg_velocity_y);
+
+            // ux * ux + uy * uy
             const double avg_velocity_vec_len_sqr =
-                std::pow(avg_velocity_x, 2) + std::pow(avg_velocity_y, 2);
+                std::fma(avg_velocity_x, avg_velocity_x,
+                         avg_velocity_y * avg_velocity_y);
 
-            equilibrium_distribution(x, y, dir) =
-                coefficient *
-                (1 + 3 * dot_product + (9.0 / 2.0) * std::pow(dot_product, 2) -
-                 (3.0 / 2.0) * avg_velocity_vec_len_sqr);
+            // A1 = 3.0 * (c_i * u)  + 1.0
+            const double A1 = std::fma(C1, dot_product, C2);
+
+            // A2 = (9.0 / 2.0) * (c_i * u)(c_i * u) + A1
+            const double A2 = std::fma(C3, dot_product * dot_product, A1);
+
+            // A3 = (-3.0 / 2.0) * (|u| * |u|) + A2
+            const double A3 = std::fma(C4, avg_velocity_vec_len_sqr, A2);
+
+            // Result = w_i * rho * A3
+            equilibrium_distribution(x, y, dir) = coefficient * A3;
         });
 }
 
