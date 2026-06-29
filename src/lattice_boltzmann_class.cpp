@@ -2,9 +2,9 @@
 #include <Kokkos_Random.hpp>
 
 #include <direction_definitions.hpp>
-#include <lattice_boltzman_impl.hpp>
+#include <lattice_boltzmann_impl.hpp>
 
-#include "lattice_boltzman_class.hpp"
+#include "lattice_boltzmann_class.hpp"
 
 LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height,
                                  double viscocity) {

@@ -4,7 +4,7 @@
 #include <Kokkos_Core.hpp>
 #include <Kokkos_Random.hpp>
 
-#include <lattice_boltzman_class.hpp>
+#include <lattice_boltzmann_class.hpp>
 
 #define GRID_WIDTH 15
 #define GRID_HEIGHT 10
