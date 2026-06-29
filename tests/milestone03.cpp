@@ -6,7 +6,7 @@
 #include <Kokkos_Random.hpp>
 
 #include <direction_definitions.hpp>
-#include <lattice_boltzman_impl.hpp>
+#include <lattice_boltzmann_impl.hpp>
 
 namespace {
 
