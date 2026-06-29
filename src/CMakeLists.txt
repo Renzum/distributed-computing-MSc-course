@@ -1,4 +1,4 @@
-add_library(lib STATIC lattice_boltzmann_class.cpp lattice_boltzmann_impl.cpp)
+add_library(lib STATIC lattice_boltzmann_class.cpp lattice_boltzmann_impl.cpp density_functions.cpp output_functions.cpp)
 
 target_include_directories(lib PUBLIC includes/public)
 target_include_directories(lib PRIVATE includes/private)

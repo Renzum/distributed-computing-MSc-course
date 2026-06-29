@@ -1,28 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
 
+#include <density_functions.hpp>
 #include <direction_definitions.hpp>
 #include <lattice_boltzmann_impl.hpp>
-
-namespace {
-void random_distribution(const Kokkos::View<double ***> view, int grid_width,
-                         int grid_height) {
-    auto rand = Kokkos::Random_XorShift64_Pool<>(/* seed = */ 12345);
-    Kokkos::parallel_for(
-        "Initialize Density",
-        Kokkos::MDRangePolicy({0, 0, 0},
-                              {grid_width, grid_height, TOTAL_DIRECTIONS}),
-        KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
-            auto gen = rand.get_state();
-
-            view(x, y, dir) = x + y + dir + gen.rand(0, 100);
-
-            rand.free_state(gen);
-        });
-}
-} // namespace
 
 TEST(MILESTONE02, STREAMING_STEP) {
     const int grid_width = 3;
@@ -34,10 +16,9 @@ TEST(MILESTONE02, STREAMING_STEP) {
     auto distribution_function = Kokkos::View<double ***>(
         "Current Distribution", grid_width, grid_height, TOTAL_DIRECTIONS);
 
-    random_distribution(distribution_function, grid_width, grid_height);
+    initRandomDensity(distribution_function);
 
-    LBMImpl::streaming_step(buffer_distribution_view, distribution_function,
-                            grid_width, grid_height);
+    LBMImpl::streaming_step(buffer_distribution_view, distribution_function);
 
     ASSERT_EQ(buffer_distribution_view(0, 0, Direction::Center),
               distribution_function(0, 0, Direction::Center))

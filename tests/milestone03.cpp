@@ -3,30 +3,11 @@
 #include <limits>
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
 
+#include <density_functions.hpp>
 #include <direction_definitions.hpp>
 #include <lattice_boltzmann_impl.hpp>
-
-namespace {
-
-void random_distribution(const Kokkos::View<double ***> view, int grid_width,
-                         int grid_height) {
-    auto rand = Kokkos::Random_XorShift64_Pool<>(/* seed = */ 12345);
-    Kokkos::parallel_for(
-        "Initialize Density",
-        Kokkos::MDRangePolicy({0, 0, 0},
-                              {grid_width, grid_height, TOTAL_DIRECTIONS}),
-        KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
-            auto gen = rand.get_state();
-
-            view(x, y, dir) = x + y + dir + gen.rand(0, 100);
-
-            rand.free_state(gen);
-        });
-}
-
-} // namespace
+#include <output_functions.hpp>
 
 TEST(MILESTONE03, DENSITY_CALCULATION) {
     const int grid_width = 6;
@@ -38,10 +19,9 @@ TEST(MILESTONE03, DENSITY_CALCULATION) {
     auto density_function =
         Kokkos::View<double **>("Density Function", grid_width, grid_height);
 
-    random_distribution(distribution_function, grid_width, grid_height);
+    initRandomDensity(distribution_function);
 
-    LBMImpl::calculate_density(density_function, distribution_function,
-                               grid_width, grid_height);
+    LBMImpl::calculate_density(density_function, distribution_function);
 
     for (int x = 0; x < grid_width; x++) {
         for (int y = 0; y < grid_height; y++) {
@@ -88,25 +68,23 @@ TEST(MILESTONE03, MASS_CONSERVATION) {
         return total_mass;
     };
 
-    random_distribution(distribution_function, grid_width, grid_height);
+    initRandomDensity(distribution_function);
 
     double expected_total_mass = calculate_total_mass();
 
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
-        LBMImpl::calculate_density(density_function, distribution_function,
-                                   grid_width, grid_height);
+        LBMImpl::calculate_density(density_function, distribution_function);
         LBMImpl::calculate_local_average_velocity(
             local_average_velocity_function, distribution_function,
-            density_function, grid_width, grid_height);
+            density_function);
         LBMImpl::calculate_equilibrium_distribution(
             buffer_distribution_function, density_function,
-            local_average_velocity_function, grid_width, grid_height);
+            local_average_velocity_function);
         LBMImpl::relax_distribution(distribution_function,
-                                    buffer_distribution_function, viscocity,
-                                    grid_width, grid_height);
+                                    buffer_distribution_function, viscocity);
         LBMImpl::streaming_step(buffer_distribution_function,
-                                distribution_function, grid_width, grid_height);
+                                distribution_function);
 
         // I wasn't sure what precision to use, so I asked Claude.
         // It recommended I use epsilon * expected mass with a coefficient of
@@ -170,31 +148,32 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
         }
     };
 
-    random_distribution(distribution_function, grid_width, grid_height);
+    initRandomDensity(distribution_function);
 
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
-        LBMImpl::calculate_density(density_function, distribution_function,
-                                   grid_width, grid_height);
+        LBMImpl::calculate_density(density_function, distribution_function);
         LBMImpl::calculate_local_average_velocity(
             local_average_velocity_function, distribution_function,
-            density_function, grid_width, grid_height);
+            density_function);
         LBMImpl::calculate_equilibrium_distribution(
             buffer_distribution_function, density_function,
-            local_average_velocity_function, grid_width, grid_height);
+            local_average_velocity_function);
 
         check_local_momentum();
         LBMImpl::relax_distribution(distribution_function,
-                                    buffer_distribution_function, viscocity,
-                                    grid_width, grid_height);
+                                    buffer_distribution_function, viscocity);
         check_local_momentum();
 
         LBMImpl::streaming_step(buffer_distribution_function,
-                                distribution_function, grid_width, grid_height);
+                                distribution_function);
     }
 }
 
 TEST(MILESTONE03, FIXED_POINT) {
+    auto distribution_output_file = DistributionFunctionOutput(
+        "milestone03_momentum_conservation_distribution.csv");
+
     const int grid_width = 10;
     const int grid_height = 10;
 
@@ -210,18 +189,44 @@ TEST(MILESTONE03, FIXED_POINT) {
     auto local_average_velocity_function = Kokkos::View<double ***>(
         "Local Average Velocity Function", grid_width, grid_height, 2);
 
-    random_distribution(distribution_function, grid_width, grid_height);
+    // Populate the density with a uniform value of 1.0
+    for (int x = 0; x < grid_width; x++) {
+        for (int y = 0; y < grid_width; y++) {
+            density_function(x, y) = 1.0;
+        }
+    }
 
-    LBMImpl::calculate_density(density_function, distribution_function,
-                               grid_width, grid_height);
-    LBMImpl::calculate_local_average_velocity(
-        local_average_velocity_function, distribution_function,
-        density_function, grid_width, grid_height);
+    for (int x = 0; x < grid_width; x++) {
+        for (int y = 0; y < grid_width; y++) {
+            local_average_velocity_function(x, y, 0) = 0.1;
+            local_average_velocity_function(x, y, 1) = 0.1;
+        }
+    }
+
     LBMImpl::calculate_equilibrium_distribution(
         buffer_distribution_function, density_function,
-        local_average_velocity_function, grid_width, grid_height);
+        local_average_velocity_function);
 
     // We copy the equilibrium distribution to the distribution function
     // This gives us f = f_eq
     Kokkos::deep_copy(distribution_function, buffer_distribution_function);
+
+    distribution_output_file.output(distribution_function, 0);
+    int i = 1;
+
+    const int iterations = 10;
+    for (; i < iterations; i++) {
+        LBMImpl::calculate_density(density_function, distribution_function);
+        LBMImpl::calculate_local_average_velocity(
+            local_average_velocity_function, distribution_function,
+            density_function);
+        LBMImpl::calculate_equilibrium_distribution(
+            buffer_distribution_function, density_function,
+            local_average_velocity_function);
+        LBMImpl::relax_distribution(distribution_function,
+                                    buffer_distribution_function, viscocity);
+        LBMImpl::streaming_step(buffer_distribution_function,
+                                distribution_function);
+        distribution_output_file.output(distribution_function, i);
+    }
 }

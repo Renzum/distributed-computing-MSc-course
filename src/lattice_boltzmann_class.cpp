@@ -1,26 +1,21 @@
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
 
+#include <density_functions.hpp>
 #include <direction_definitions.hpp>
 #include <lattice_boltzmann_impl.hpp>
 
 #include "lattice_boltzmann_class.hpp"
 
-LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height,
-                                 double viscocity) {
+LatticeBoltzmann::LatticeBoltzmann(const int grid_width, const int grid_height,
+                                   const double viscocity) {
+
     this->grid_width = grid_width;
     this->grid_height = grid_height;
 
     this->viscocity = viscocity;
 
-    distribution_output_file =
-        std::ofstream("distribution_data.txt", std::ios::out);
-    density_output_file = std::ofstream("density_data.txt", std::ios::out);
-    local_average_velocity_output_file =
-        std::ofstream("local_average_velocity_data.txt", std::ios::out);
-
     buffer_distribution_view =
-        Kokkos::View<double ***>("Previous Distribution Function", grid_width,
+        Kokkos::View<double ***>("Buffer Distribution Function", grid_width,
                                  grid_height, TOTAL_DIRECTIONS);
     distribution_function =
         Kokkos::View<double ***>("Current Distribution Function", grid_width,
@@ -32,108 +27,72 @@ LatticeBoltzman::LatticeBoltzman(int grid_width, int grid_height,
         "Current Local Average Velocity", grid_width, grid_height,
         2); // Each point is a two dimensional vector
 
-    auto rand = Kokkos::Random_XorShift64_Pool<>(/* seed = */ 12345);
-
-    Kokkos::parallel_for(
-        "Initialize Density",
-        Kokkos::MDRangePolicy({0, 0, 0},
-                              {grid_width, grid_height, TOTAL_DIRECTIONS}),
-        KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
-            auto gen = rand.get_state();
-
-            distribution_function(x, y, dir) = x + y + dir + gen.rand(0, 100);
-
-            rand.free_state(gen);
-        });
+    initRandomDensity(distribution_function);
 
     calculate_density_function();
     calculate_local_average_velocity_function();
     calculate_equilibrium_distribution_function();
-
-    current_distribution_to_file(); // Output initial distribution on creation
-    current_density_to_file();
 }
 
-void LatticeBoltzman::lbm_step() {
+LatticeBoltzmann::LatticeBoltzmann(
+    Kokkos::View<double ***> distribution_function, const double viscocity) {
+    grid_width = distribution_function.extent_int(0);
+    grid_height = distribution_function.extent_int(1);
+
+    this->viscocity = viscocity;
+
+    this->distribution_function = distribution_function;
+
+    calculate_density_function();
+    calculate_local_average_velocity_function();
+    calculate_equilibrium_distribution_function();
+}
+
+void LatticeBoltzmann::lbm_step() {
+    calculate_density_function();
+    calculate_local_average_velocity_function();
+    calculate_equilibrium_distribution_function();
+    calculate_relaxed_distribution_function();
+    streaming_step();
+}
+
+void LatticeBoltzmann::streaming_step() {
+    LBMImpl::streaming_step(buffer_distribution_view, distribution_function);
     iteration_count++;
-
-    LBMImpl::streaming_step(buffer_distribution_view, distribution_function,
-                            grid_width, grid_height);
 }
 
-void LatticeBoltzman::calculate_density_function() {
-    LBMImpl::calculate_density(density_function, distribution_function,
-                               grid_width, grid_height);
+void LatticeBoltzmann::calculate_density_function() {
+    LBMImpl::calculate_density(density_function, distribution_function);
 }
 
-void LatticeBoltzman::calculate_local_average_velocity_function() {
+void LatticeBoltzmann::calculate_local_average_velocity_function() {
     LBMImpl::calculate_local_average_velocity(
-        local_average_velocity, distribution_function, density_function,
-        grid_width, grid_height);
+        local_average_velocity, distribution_function, density_function);
 }
 
-void LatticeBoltzman::calculate_equilibrium_distribution_function() {
+void LatticeBoltzmann::calculate_equilibrium_distribution_function() {
     // Calculates the equilibrium distribution and stores it in the buffer
     LBMImpl::calculate_equilibrium_distribution(
-        buffer_distribution_view, density_function, local_average_velocity,
-        grid_width, grid_height);
+        buffer_distribution_view, density_function, local_average_velocity);
 }
 
-void LatticeBoltzman::calculate_relaxed_distribution_function() {
+void LatticeBoltzmann::calculate_relaxed_distribution_function() {
     // The distribution function values become relaxed
     // ACHTUNG: The buffer remains the eq distribution
     LBMImpl::relax_distribution(distribution_function, buffer_distribution_view,
-                                viscocity, grid_width, grid_height);
+                                viscocity);
 }
 
 // Outputting the Views to Files
-
-void LatticeBoltzman::current_distribution_to_file() {
-    for (int x = 0; x < grid_width; x++) {
-        for (int y = 0; y < grid_height; y++) {
-            for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                distribution_output_file << "{it: " << iteration_count << ", ";
-                distribution_output_file << "x: " << x << ", ";
-                distribution_output_file << "y: " << y << ", ";
-                distribution_output_file << "dir: " << dir << ", ";
-                distribution_output_file
-                    << "val: " << distribution_function(x, y, dir) << "}"
-                    << std::endl;
-            }
-        }
-    }
+void LatticeBoltzmann::current_distribution_to_file() {
+    distribution_output_file.output(distribution_function, iteration_count);
 }
 
-void LatticeBoltzman::current_density_to_file() {
-    for (int x = 0; x < grid_width; x++) {
-        for (int y = 0; y < grid_height; y++) {
-            density_output_file << "{it: " << iteration_count << ", ";
-            density_output_file << "x: " << x << ", ";
-            density_output_file << "y: " << y << ", ";
-            density_output_file << "val: " << density_function(x, y) << "}"
-                                << std::endl;
-        }
-    }
+void LatticeBoltzmann::current_density_to_file() {
+    density_output_file.output(density_function, iteration_count);
 }
 
-void LatticeBoltzman::current_local_average_velocity_to_file() {
-    for (int x = 0; x < grid_width; x++) {
-        for (int y = 0; y < grid_height; y++) {
-            local_average_velocity_output_file << "{it: " << iteration_count
-                                               << ", ";
-            local_average_velocity_output_file << "x: " << x << ", ";
-            local_average_velocity_output_file << "y: " << y << ", ";
-            local_average_velocity_output_file
-                << "vec_x: " << local_average_velocity(x, y, 0) << ", ";
-            local_average_velocity_output_file
-                << "vec_y: " << local_average_velocity(x, y, 1) << "}"
-                << std::endl;
-        }
-    }
-}
-
-LatticeBoltzman::~LatticeBoltzman() {
-    distribution_output_file.close();
-    density_output_file.close();
-    local_average_velocity_output_file.close();
+void LatticeBoltzmann::current_local_average_velocity_to_file() {
+    local_average_velocity_output_file.output(local_average_velocity,
+                                              iteration_count);
 }

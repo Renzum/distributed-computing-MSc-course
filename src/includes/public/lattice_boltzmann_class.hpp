@@ -4,7 +4,40 @@
 
 #include <Kokkos_Core.hpp>
 
-class LatticeBoltzman {
+#include <output_functions.hpp>
+
+class LatticeBoltzmann {
+  public:
+    /**
+     * Creates a Lattice-Boltzmann simulation with a random initial distribution
+     *
+     * @param grid_width Width of the lattice
+     * @param grid_height Height of the lattice
+     * @param viscocity Viscocity of the fluid
+     */
+    LatticeBoltzmann(const int grid_width, const int grid_height,
+                     const double viscocity);
+    /**
+     * Creates a Lattice-Boltzmann simulation with a provided distribution
+     *
+     * @param distribution_function
+     * @param viscocity Viscocity of the fluid
+     */
+    LatticeBoltzmann(Kokkos::View<double ***> distribution_function,
+                     const double viscocity);
+
+    // Performs a full Lattice-Boltzmann step
+    // Calculates density, local average velocity, equilibrium, performs
+    // relaxation and then does streaming
+    void lbm_step();
+
+    // Performs the Lattice-Boltzmann streaming step
+    void streaming_step();
+
+    // Output all different functions into corresponding files
+    void current_distribution_to_file();
+    void current_density_to_file();
+    void current_local_average_velocity_to_file();
 
   private:
     int grid_width, grid_height;
@@ -12,9 +45,9 @@ class LatticeBoltzman {
 
     double viscocity;
 
-    std::ofstream distribution_output_file;
-    std::ofstream density_output_file;
-    std::ofstream local_average_velocity_output_file;
+    DistributionFunctionOutput distribution_output_file{};
+    DensityFunctionOutput density_output_file{};
+    LocalAverageVelocityFunctionOutput local_average_velocity_output_file{};
 
     // We use a buffer view for storing the equilibrium and performing the
     // streaming step
@@ -34,19 +67,4 @@ class LatticeBoltzman {
     void calculate_local_average_velocity_function();
     void calculate_equilibrium_distribution_function();
     void calculate_relaxed_distribution_function();
-
-  public:
-    LatticeBoltzman(int, int, double);
-
-    ~LatticeBoltzman();
-
-    // Performs a full Lattice-Boltzman step
-    // Calculates density, local average velocity, equilibrium, performs
-    // relaxation and then does streaming
-    void lbm_step();
-
-    // Output all different functions into corresponding files
-    void current_distribution_to_file();
-    void current_density_to_file();
-    void current_local_average_velocity_to_file();
 };
