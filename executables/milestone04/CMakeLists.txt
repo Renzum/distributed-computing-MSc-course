@@ -1,4 +1,4 @@
-add_executable(milestone04 main.cpp)
+add_executable(milestone04 main.cpp amplitude.cpp)
 
 target_include_directories(milestone04 PRIVATE include)
 

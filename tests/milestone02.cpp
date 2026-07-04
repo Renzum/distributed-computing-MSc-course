@@ -12,7 +12,7 @@ TEST(MILESTONE02, STREAMING_STEP) {
 
     auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
 
-    LatticeBoltzmann::DistributionInitializers::randomDensity(lbm_functions);
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     LatticeBoltzmann::streaming_step(lbm_functions);
 

@@ -26,8 +26,8 @@ void uniformWithHigherDensity() {
 
     auto lbm_functions = LatticeBoltzmann::Functions{GRID_WIDTH, GRID_HEIGHT};
 
-    LatticeBoltzmann::DistributionInitializers::uniformDensityWithHigherCenter(
-        lbm_functions, 1.0, 1.1);
+    LatticeBoltzmann::DistributionInitializers::
+        uniform_density_with_higher_center(lbm_functions, 1.0, 1.1);
 
     for (int i = 0; i < 100; i++) {
         distribution_output.output(lbm_functions.distribution_function, i);
@@ -57,7 +57,7 @@ void randomLongRun() {
 
     auto lbm_functions = LatticeBoltzmann::Functions{GRID_WIDTH, GRID_HEIGHT};
 
-    LatticeBoltzmann::DistributionInitializers::randomDensity(lbm_functions);
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     for (int i = 0; i < 1000; i++) {
         distribution_output.output(lbm_functions.distribution_function, i);
