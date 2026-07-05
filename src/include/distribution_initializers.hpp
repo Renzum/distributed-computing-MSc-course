@@ -8,25 +8,25 @@ namespace LatticeBoltzmann {
 
 namespace DistributionInitializers {
 
-void uniformDensity(const Kokkos::View<double ***> &, const double);
-inline void uniformDensity(const Functions &lbm_functions,
-                           double uniform_value = 1.0) {
-    uniformDensity(lbm_functions.distribution_function, uniform_value);
+void uniform_density(const Kokkos::View<double ***> &, const double);
+inline void uniform_density(const Functions &lbm_functions,
+                            double uniform_value = 1.0) {
+    uniform_density(lbm_functions.distribution_function, uniform_value);
 }
 
-void uniformDensityWithHigherCenter(const Kokkos::View<double ***> &,
-                                    double uniform_value, double higher_value);
-inline void
-uniformDensityWithHigherCenter(const LatticeBoltzmann::Functions &lbm_functions,
-                               double uniform_value = 1.0,
-                               double higher_value = 1.1) {
-    uniformDensityWithHigherCenter(lbm_functions.distribution_function,
-                                   uniform_value, higher_value);
+void uniform_density_with_higher_center(const Kokkos::View<double ***> &,
+                                        double uniform_value,
+                                        double higher_value);
+inline void uniform_density_with_higher_center(
+    const LatticeBoltzmann::Functions &lbm_functions,
+    double uniform_value = 1.0, double higher_value = 1.1) {
+    uniform_density_with_higher_center(lbm_functions.distribution_function,
+                                       uniform_value, higher_value);
 }
 
-void randomDensity(const Kokkos::View<double ***> &);
-inline void randomDensity(const Functions &lbm_functions) {
-    randomDensity(lbm_functions.distribution_function);
+void random_density(const Kokkos::View<double ***> &);
+inline void random_density(const Functions &lbm_functions) {
+    random_density(lbm_functions.distribution_function);
 }
 
 } // namespace DistributionInitializers

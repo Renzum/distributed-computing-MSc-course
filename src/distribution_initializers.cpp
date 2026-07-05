@@ -10,7 +10,7 @@ namespace LatticeBoltzmann {
 
 namespace DistributionInitializers {
 
-void uniformDensity(const Kokkos::View<double ***> &distribution_function,
+void uniform_density(const Kokkos::View<double ***> &distribution_function,
                     const double uniform_value = 1.0) {
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
@@ -24,7 +24,7 @@ void uniformDensity(const Kokkos::View<double ***> &distribution_function,
         });
 }
 
-void uniformDensityWithHigherCenter(
+void uniform_density_with_higher_center(
     const Kokkos::View<double ***> &distribution_function,
     const double uniform_value = 1.0, const double higher_value = 1.0) {
 
@@ -57,7 +57,7 @@ void uniformDensityWithHigherCenter(
         });
 }
 
-void randomDensity(const Kokkos::View<double ***> &distribution_function) {
+void random_density(const Kokkos::View<double ***> &distribution_function) {
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
 

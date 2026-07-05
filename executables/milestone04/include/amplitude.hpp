@@ -7,7 +7,8 @@
 
 #include <lattice_boltzmann.hpp>
 
-long double calculate_amplitude_via_project(const Kokkos::View<double ***> &);
+long double
+calculate_amplitude_via_projection(const Kokkos::View<double ***> &);
 long double sample_amp_at_max(const Kokkos::View<double ***> &);
 
 class AmplitudeOutput {

@@ -78,37 +78,6 @@ Functions::Functions(int grid_width, int grid_height) {
         "Local Average Velocity", grid_width, grid_height, 2);
 };
 
-Functions::Functions(const Kokkos::View<double ***> &src_distribution_function,
-                     const Kokkos::View<double **> &src_density_function,
-                     const Kokkos::View<double ***> &src_local_average_velocity)
-    : Functions(src_distribution_function.extent_int(0),
-                src_distribution_function.extent_int(1)) {
-
-    Kokkos::deep_copy(distribution_function, src_distribution_function);
-    Kokkos::deep_copy(density_function, src_density_function);
-    Kokkos::deep_copy(local_average_velocity, src_local_average_velocity);
-}
-
-// // Deep Copy Constructor
-// Functions::Functions(const Functions &other) {
-//     const int grid_width = other.distribution_function.extent_int(0);
-//     const int grid_height = other.distribution_function.extent_int(1);
-
-//     distribution_function = Kokkos::View<double ***>(
-//         "Distribution Function", grid_width, grid_height, TOTAL_DIRECTIONS);
-//     buffer_distribution_function =
-//         Kokkos::View<double ***>("Buffer Distribution Function", grid_width,
-//                                  grid_height, TOTAL_DIRECTIONS);
-//     density_function =
-//         Kokkos::View<double **>("Density Function", grid_width, grid_height);
-//     local_average_velocity = Kokkos::View<double ***>(
-//         "Local Average Velocity", grid_width, grid_height, 2);
-
-//     Kokkos::deep_copy(distribution_function, other.distribution_function);
-//     Kokkos::deep_copy(density_function, other.density_function);
-//     Kokkos::deep_copy(local_average_velocity, other.local_average_velocity);
-// }
-
 void streaming_step(Kokkos::View<double ***> &buffer_distribution_view,
                     Kokkos::View<double ***> &distribution_function) {
     const auto [grid_width, grid_height] =

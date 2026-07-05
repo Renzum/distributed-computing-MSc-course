@@ -37,8 +37,8 @@ long double sample_amp_at_max(const Kokkos::View<double ***> &local_avg_vel) {
 }
 
 // Calculate the Fourier amplitude of the u_x
-long double
-calculate_amplitude_via_project(const Kokkos::View<double ***> &local_avg_vel) {
+long double calculate_amplitude_via_projection(
+    const Kokkos::View<double ***> &local_avg_vel) {
 
     const int max_y =
         local_avg_vel.extent_int(1); // Get the y size of the lattice

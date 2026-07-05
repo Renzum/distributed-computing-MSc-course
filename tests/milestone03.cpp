@@ -15,7 +15,7 @@ TEST(MILESTONE03, DENSITY_CALCULATION) {
 
     auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
 
-    LatticeBoltzmann::DistributionInitializers::randomDensity(lbm_functions);
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     LatticeBoltzmann::calculate_density(lbm_functions);
 
@@ -43,7 +43,7 @@ TEST(MILESTONE03, MASS_CONSERVATION) {
 
     auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
 
-    LatticeBoltzmann::DistributionInitializers::randomDensity(lbm_functions);
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     auto calculate_total_mass = [&lbm_functions, &grid_width,
                                  &grid_height]() -> double {
@@ -115,7 +115,7 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
         }
     };
 
-    LatticeBoltzmann::DistributionInitializers::randomDensity(lbm_functions);
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
@@ -218,8 +218,8 @@ TEST(MILESTONE03, BUMP_TO_UNIFORM) {
     // Fill the distribution with a uniform value 1.0 unless the location is in
     // the middle 1/3 of the lattice, in which case we fill the cells with 1.1
     // to achieve a slightly higher density in the center
-    LatticeBoltzmann::DistributionInitializers::uniformDensityWithHigherCenter(
-        lbm_functions, 1.0, 1.1);
+    LatticeBoltzmann::DistributionInitializers::
+        uniform_density_with_higher_center(lbm_functions, 1.0, 1.1);
 
     const double omega = 0.5;
 

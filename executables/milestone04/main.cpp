@@ -2,14 +2,44 @@
 #include <iterator>
 
 #include <Kokkos_Core.hpp>
-#include <amplitude.hpp>
-#include <output_functions.hpp>
 
 #include <fmt/format.h>
 
+#include <amplitude.hpp>
 #include <lattice_boltzmann.hpp>
+#include <output_functions.hpp>
 
-void initStartingDistribution(LatticeBoltzmann::Functions &lbm_functions) {
+#include "main.hpp"
+
+int main(int argc, char *argv[]) {
+    Kokkos::initialize(argc, argv);
+
+    ms4();
+
+    Kokkos::finalize();
+}
+
+void ms4() {
+    const int lattice_width = 20;
+    const int lattice_height = 20;
+
+    std::vector<double> omegas{0.1, 0.2,  0.3, 0.4, 0.5, 0.8, 1.0,
+                               1.1, 1.25, 1.4, 1.6, 1.8, 1.99};
+
+    AmplitudeOutput amp_output("milestone4-amplitudes.yaml");
+
+    LatticeBoltzmann::Functions lbm_functions(lattice_width, lattice_height);
+
+    init_starting_distribution(lbm_functions);
+
+    for (auto it = omegas.begin(); it != omegas.end(); it++) {
+        auto lbm_copy = duplicate_functions(lbm_functions);
+
+        simulate_and_calculate(lbm_copy, *it, amp_output);
+    }
+}
+
+void init_starting_distribution(LatticeBoltzmann::Functions &lbm_functions) {
     const int lattice_width = lbm_functions.distribution_function.extent_int(0);
     const int lattice_height =
         lbm_functions.distribution_function.extent_int(1);
@@ -42,6 +72,23 @@ void initStartingDistribution(LatticeBoltzmann::Functions &lbm_functions) {
         });
 }
 
+// I originally wanted to do it via a copy constructor, but there were pointer
+// bugs that I could not figure out and the amplitudes became a NaN
+LatticeBoltzmann::Functions
+duplicate_functions(const LatticeBoltzmann::Functions &source) {
+
+    LatticeBoltzmann::Functions lbm_copy(
+        source.distribution_function.extent_int(0),
+        source.distribution_function.extent_int(1));
+
+    Kokkos::deep_copy(lbm_copy.distribution_function,
+                      source.distribution_function);
+    Kokkos::deep_copy(lbm_copy.density_function, source.density_function);
+    Kokkos::deep_copy(lbm_copy.local_average_velocity,
+                      source.local_average_velocity);
+    return lbm_copy;
+}
+
 void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
                             const double &omega, AmplitudeOutput &amp_output) {
     const int lattice_height =
@@ -64,7 +111,7 @@ void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
         density_output.output(lbm_functions.density_function, i);
 
 #ifndef USE_SAMPLE_AT_MAX
-        const long double amp = calculate_amplitude_via_project(
+        const long double amp = calculate_amplitude_via_projection(
             lbm_functions.local_average_velocity);
 #else
         const long double amp =
@@ -79,55 +126,4 @@ void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
         LatticeBoltzmann::streaming_step(lbm_functions);
     }
-}
-
-// I originally wanted to do it via a copy constructor, but there were pointer
-// bugs that I could not figure out and the amplitudes became a NaN
-LatticeBoltzmann::Functions
-duplicate_functions(const LatticeBoltzmann::Functions &source) {
-
-    LatticeBoltzmann::Functions lbm_copy(
-        source.distribution_function.extent_int(0),
-        source.distribution_function.extent_int(1));
-
-    Kokkos::deep_copy(lbm_copy.distribution_function,
-                      source.distribution_function);
-    Kokkos::deep_copy(lbm_copy.density_function, source.density_function);
-    Kokkos::deep_copy(lbm_copy.local_average_velocity,
-                      source.local_average_velocity);
-    return lbm_copy;
-}
-
-void ms4() {
-    const int lattice_width = 20;
-    const int lattice_height = 20;
-
-    std::vector<double> omegas{0.1, 0.2,  0.3, 0.4, 0.5, 0.8, 1.0,
-                               1.1, 1.25, 1.4, 1.6, 1.8, 1.99};
-
-    AmplitudeOutput amp_output("milestone4-amplitudes.yaml");
-
-    LatticeBoltzmann::Functions lbm_functions(lattice_width, lattice_height);
-
-    initStartingDistribution(lbm_functions);
-
-    for (auto it = omegas.begin(); it != omegas.end(); it++) {
-        auto lbm_copy = duplicate_functions(lbm_functions);
-
-        Kokkos::deep_copy(lbm_copy.distribution_function,
-                          lbm_functions.distribution_function);
-        Kokkos::deep_copy(lbm_copy.density_function,
-                          lbm_functions.density_function);
-        Kokkos::deep_copy(lbm_copy.local_average_velocity,
-                          lbm_functions.local_average_velocity);
-
-        simulate_and_calculate(lbm_copy, *it, amp_output);
-    }
-}
-
-int main(int argc, char *argv[]) {
-    Kokkos::initialize(argc, argv);
-
-    ms4();
-    Kokkos::finalize();
 }
