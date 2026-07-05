@@ -6,21 +6,33 @@
 
 #include "amplitude.hpp"
 
-AmplitudeOutput::AmplitudeOutput(std::string file_name)
+AmplitudeOutput::AmplitudeOutput(std::string file_name, const double &omega,
+                                 const int &max_y)
     : output_file(file_name, std::ios::out) {
-
-    // Write the csv spec to the file
-    output_file << "time_step,amplitude,omega,max_y" << std::endl;
+    output_file << "omega: " << omega << "\n";
+    output_file << "max_y: " << max_y << "\n";
+    output_file << "amplitudes: " << std::endl;
 };
 
 AmplitudeOutput::~AmplitudeOutput() {
     output_file.close();
 }
 
-void AmplitudeOutput::output(const long double &amplitude, const double &omega,
-                             const int &max_y, const int &time_step) {
-    output_file << time_step << "," << amplitude << "," << omega << "," << max_y
+void AmplitudeOutput::append(const long double &amplitude,
+                             const int &time_step) {
+    output_file << "  - time_step: " << time_step << "\n";
+    output_file << std::setprecision(17) << "    amplitude: " << amplitude
                 << std::endl;
+}
+
+long double
+double_sample_at_max(const Kokkos::View<double ***> &local_avg_vel) {
+    const int max_y =
+        local_avg_vel.extent_int(1); // Get the y size of the lattice
+    const long double zeta = 2.0 * M_PI / max_y; // 2pi / L_y
+
+    long double amplitude = local_avg_vel(0, static_cast<int>(max_y / 4.0), 0);
+    return amplitude;
 }
 
 // Calculate the Fourier amplitude of the u_x

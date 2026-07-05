@@ -37,6 +37,8 @@ void ms4() {
             }
         });
 
+    const double omega = 1.9;
+
     // Calculate the f_eq and set f to it
     LatticeBoltzmann::calculate_equilibrium_distribution(
         lbm_functions.distribution_function, lbm_functions.density_function,
@@ -44,18 +46,21 @@ void ms4() {
 
     DistributionFunctionOutput distribution_output(
         "milestone4-distribution.csv");
-    DensityFunctionOutput density_output("milestone4-density.csv");
-    AmplitudeOutput amplitude_output("milestone4-amplitude.csv");
-
-    const double omega = 0.5;
+    DensityFunctionOutput density_output(
+        "milestone4-density-omega=1.9-max_y=20.csv");
+    AmplitudeOutput amplitude_output("milestone4-amplitude.yaml", omega,
+                                     lattice_width);
 
     const int iterations = 600;
     for (int i = 0; i < iterations; i++) {
         distribution_output.output(lbm_functions.distribution_function, i);
         density_output.output(lbm_functions.density_function, i);
-        amplitude_output.output(calculate_amplitude_via_project(
+        amplitude_output.append(calculate_amplitude_via_project(
                                     lbm_functions.local_average_velocity),
-                                omega, lattice_height, i);
+                                i);
+        // amplitude_output.output(
+        //     double_sample_at_max(lbm_functions.local_average_velocity),
+        //     omega, lattice_height, i);
 
         LatticeBoltzmann::calculate_density(lbm_functions);
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
