@@ -40,6 +40,13 @@ struct Functions {
      * height
      */
     Functions(int grid_width, int grid_height);
+
+    /*
+     * Allocates the same size Views and copies the data to them
+     */
+    Functions(const Kokkos::View<double ***> &distribution_function,
+              const Kokkos::View<double **> &density_function,
+              const Kokkos::View<double ***> &local_average_velocity);
 };
 
 void streaming_step(Kokkos::View<double ***> &buffer_distribution_view,

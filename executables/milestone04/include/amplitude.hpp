@@ -15,9 +15,9 @@ class AmplitudeOutput {
     std::fstream output_file;
 
   public:
-    AmplitudeOutput(std::string file_name, const double &omega,
-                    const int &max_y);
+    AmplitudeOutput(std::string file_name);
     ~AmplitudeOutput();
 
-    void append(const long double &amplitude, const int &iteration);
+    void append_data_set(const long double &amplitude, const int &iteration);
+    void new_data_set(const double &omega, const int &max_y);
 };

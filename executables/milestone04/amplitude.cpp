@@ -6,23 +6,25 @@
 
 #include "amplitude.hpp"
 
-AmplitudeOutput::AmplitudeOutput(std::string file_name, const double &omega,
-                                 const int &max_y)
-    : output_file(file_name, std::ios::out) {
-    output_file << "omega: " << omega << "\n";
-    output_file << "max_y: " << max_y << "\n";
-    output_file << "amplitudes: " << std::endl;
-};
+AmplitudeOutput::AmplitudeOutput(std::string file_name)
+    : output_file(file_name, std::ios::out) {};
 
 AmplitudeOutput::~AmplitudeOutput() {
     output_file.close();
 }
 
-void AmplitudeOutput::append(const long double &amplitude,
-                             const int &time_step) {
-    output_file << "  - time_step: " << time_step << "\n";
-    output_file << std::setprecision(17) << "    amplitude: " << amplitude
+void AmplitudeOutput::append_data_set(const long double &amplitude,
+                                      const int &time_step) {
+    output_file << "    - time_step: " << time_step << "\n";
+    output_file << std::setprecision(17) << "      amplitude: " << amplitude
                 << std::endl;
+}
+
+void AmplitudeOutput::new_data_set(const double &omega, const int &max_y) {
+
+    output_file << "- omega: " << omega << "\n";
+    output_file << "  max_y: " << max_y << "\n";
+    output_file << "  amplitudes: " << std::endl;
 }
 
 long double
