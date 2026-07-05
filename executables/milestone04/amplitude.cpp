@@ -27,8 +27,7 @@ void AmplitudeOutput::new_data_set(const double &omega, const int &max_y) {
     output_file << "  amplitudes: " << std::endl;
 }
 
-long double
-double_sample_at_max(const Kokkos::View<double ***> &local_avg_vel) {
+long double sample_amp_at_max(const Kokkos::View<double ***> &local_avg_vel) {
     const int max_y =
         local_avg_vel.extent_int(1); // Get the y size of the lattice
     const long double zeta = 2.0 * M_PI / max_y; // 2pi / L_y
