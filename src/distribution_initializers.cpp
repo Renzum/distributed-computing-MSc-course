@@ -6,12 +6,16 @@
 
 #include "distribution_initializers.hpp"
 
+#define IS_CENTER(x, y)                                                        \
+    (width_center_min < x && x < width_center_max) &&                          \
+        (height_center_min < y && y < height_center_max)
+
 namespace LatticeBoltzmann {
 
 namespace DistributionInitializers {
 
-void uniform_density(const Kokkos::View<double ***> &distribution_function,
-                    const double uniform_value = 1.0) {
+void uniform_density(DistributionFunction &distribution_function,
+                     const double uniform_value) {
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
 
@@ -25,8 +29,8 @@ void uniform_density(const Kokkos::View<double ***> &distribution_function,
 }
 
 void uniform_density_with_higher_center(
-    const Kokkos::View<double ***> &distribution_function,
-    const double uniform_value = 1.0, const double higher_value = 1.0) {
+    DistributionFunction &distribution_function, const double uniform_value,
+    const double higher_value) {
 
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
@@ -38,18 +42,19 @@ void uniform_density_with_higher_center(
     const double height_center_max = 2.0 * double(lattice_height) / 3.0;
 
     // Lambda for checking if the x y is in the center 1/3 of the lattice
-    auto is_center = [&width_center_min, &width_center_max, &height_center_min,
-                      &height_center_max](int x, int y) -> bool {
-        return (width_center_min < x && x < width_center_max) &&
-               (height_center_min < y && y < height_center_max);
-    };
+    // auto is_center = [&width_center_min, &width_center_max,
+    // &height_center_min,
+    //                   &height_center_max](int x, int y) -> bool {
+    //     return (width_center_min < x && x < width_center_max) &&
+    //            (height_center_min < y && y < height_center_max);
+    // };
 
     Kokkos::parallel_for(
         "Init Uniform with Dense Center",
         Kokkos::MDRangePolicy(
             {0, 0, 0}, {lattice_width, lattice_height, TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
-            if (is_center(x, y)) {
+            if (IS_CENTER(x, y)) {
                 distribution_function(x, y, dir) = higher_value;
             } else {
                 distribution_function(x, y, dir) = uniform_value;
@@ -57,7 +62,23 @@ void uniform_density_with_higher_center(
         });
 }
 
-void random_density(const Kokkos::View<double ***> &distribution_function) {
+void uniform_at_rest(DensityFunction &density_function,
+                     LocalAverageVelocity &average_velocity,
+                     const double &uniform_value) {
+    const int lattice_width = density_function.extent_int(0);
+    const int lattice_height = density_function.extent_int(1);
+
+    Kokkos::parallel_for(
+        "Init Uniform at Rest",
+        Kokkos::MDRangePolicy({0, 0}, {lattice_width, lattice_height}),
+        KOKKOS_LAMBDA(const int &x, const int &y) {
+            density_function(x, y) = uniform_value;
+            average_velocity(x, y, 0) = 0;
+            average_velocity(x, y, 1) = 0;
+        });
+}
+
+void random_density(DistributionFunction &distribution_function) {
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
 

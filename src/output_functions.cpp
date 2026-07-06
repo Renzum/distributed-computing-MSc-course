@@ -1,9 +1,9 @@
 #include <fstream>
+#include <iostream>
 #include <string>
 
-#include <Kokkos_Core.hpp>
-
 #include <direction_definitions.hpp>
+#include <lattice_boltzmann.hpp>
 
 #include "output_functions.hpp"
 
@@ -16,7 +16,7 @@ IOutput::~IOutput() {
 }
 
 void DistributionFunctionOutput::output(
-    const Kokkos::View<double ***> &distribution_function,
+    const LatticeBoltzmann::HostDistributionMirror distribution_function,
     const int &iteration) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
@@ -35,7 +35,8 @@ void DistributionFunctionOutput::output(
 }
 
 void DensityFunctionOutput::output(
-    const Kokkos::View<double **> &density_function, const int &iteration) {
+    const LatticeBoltzmann::HostDensityMirror density_function,
+    const int &iteration) {
     const int grid_width = density_function.extent_int(0);
     const int grid_height = density_function.extent_int(1);
 
@@ -49,19 +50,46 @@ void DensityFunctionOutput::output(
     }
 }
 
-void LocalAverageVelocityFunctionOutput::output(
-    const Kokkos::View<double ***> &local_average_velocity_function,
+LocalAverageVelocityFunctionOutput::LocalAverageVelocityFunctionOutput(
+    std::string file_name, const int lattice_width, const int lattice_height,
+    const LatticeBoltzmann::Walls &walls) {
+
+    file = std::ofstream(file_name, std::ios::out);
+
+    file << "width: " << lattice_width << "\n";
+    file << "height: " << lattice_width << "\n";
+
+    file << "right_wall_velocity_x: " << walls.right.vel_x << "\n";
+    file << "right_wall_velocity_y: " << walls.right.vel_y << "\n";
+
+    file << "bottom_wall_velocity_x: " << walls.bottom.vel_x << "\n";
+    file << "bottom_wall_velocity_y: " << walls.bottom.vel_y << "\n";
+
+    file << "left_wall_velocity_x: " << walls.left.vel_x << "\n";
+    file << "left_wall_velocity_y: " << walls.left.vel_y << "\n";
+
+    file << "top_wall_velocity_x: " << walls.top.vel_x << "\n";
+    file << "top_wall_velocity_y: " << walls.top.vel_y << "\n";
+}
+
+void LocalAverageVelocityFunctionOutput::add_timestep(
+    const LatticeBoltzmann::HostLocalAverageVelocityMirror
+        local_average_velocity_function,
     const int &iteration) {
     const int grid_width = local_average_velocity_function.extent_int(0);
     const int grid_height = local_average_velocity_function.extent_int(1);
 
+    file << "---" << "\n";
+    file << "iteration: " << iteration << "\n";
+    file << "velocities: " << "\n";
     for (int x = 0; x < grid_width; x++) {
         for (int y = 0; y < grid_height; y++) {
-            file << iteration << ",";
-            file << x << ",";
-            file << y << ",";
-            file << local_average_velocity_function(x, y, 0) << ",";
-            file << local_average_velocity_function(x, y, 1) << std::endl;
+            file << "- x: " << x << "\n";
+            file << "  y: " << y << "\n";
+            file << "  vel_x: " << local_average_velocity_function(x, y, 0)
+                 << "\n";
+            file << "  vel_y: " << local_average_velocity_function(x, y, 1)
+                 << std::endl;
         }
     }
 }
