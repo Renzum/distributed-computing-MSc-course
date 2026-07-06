@@ -69,7 +69,7 @@ TEST(MILESTONE03, MASS_CONSERVATION) {
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
 
         EXPECT_NEAR(calculate_total_mass(), expected_total_mass,
                     std::numeric_limits<double>::epsilon() *
@@ -137,7 +137,7 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
             lbm_functions.buffer_distribution_function, omega);
         check_local_momentum();
 
-        LatticeBoltzmann::streaming_step(
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(
             lbm_functions.buffer_distribution_function,
             lbm_functions.distribution_function);
     }
@@ -188,7 +188,7 @@ TEST(MILESTONE03, FIXED_POINT) {
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
 
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
 
         for (int direction = 0; direction < TOTAL_DIRECTIONS; direction++) {
             for (int x = 0; x < grid_width; x++) {
@@ -231,7 +231,7 @@ TEST(MILESTONE03, BUMP_TO_UNIFORM) {
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
     }
 
     // Capture the x = 0 y = 0 density value as a reference point

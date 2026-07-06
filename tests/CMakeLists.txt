@@ -10,7 +10,7 @@ if(NOT GTest_FOUND)
     FetchContent_MakeAvailable(googletest)
 endif()
 
-set(TEST_SOURCES milestone02.cpp milestone03.cpp)
+set(TEST_SOURCES milestone02.cpp milestone03.cpp milestone05.cpp)
 
 list(APPEND TEST_SOURCES gtest_mpi_main.cpp)
 

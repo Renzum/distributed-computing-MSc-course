@@ -14,7 +14,7 @@ TEST(MILESTONE02, STREAMING_STEP) {
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    LatticeBoltzmann::streaming_step(lbm_functions);
+    LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
 
     ASSERT_EQ(
         lbm_functions.buffer_distribution_function(0, 0, Direction::Center),

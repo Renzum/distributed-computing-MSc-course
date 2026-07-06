@@ -17,7 +17,7 @@ void streaming() {
 
     for (int i = 0; i < GENERATIONS; i++) {
         distribution_output.output(lbm_functions.distribution_function, i);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
     }
 }
 

@@ -39,7 +39,7 @@ void uniformWithHigherDensity() {
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
     }
 }
 
@@ -72,7 +72,7 @@ void randomLongRun() {
 
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step(lbm_functions);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
     }
 }
 

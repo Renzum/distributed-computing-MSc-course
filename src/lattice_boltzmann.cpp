@@ -1,4 +1,5 @@
 #include <cmath>
+#include <functional>
 #include <tuple>
 
 #include <Kokkos_Core.hpp>
@@ -78,17 +79,26 @@ Functions::Functions(int grid_width, int grid_height) {
         "Local Average Velocity", grid_width, grid_height, 2);
 };
 
-void streaming_step(Kokkos::View<double ***> &buffer_distribution_view,
-                    Kokkos::View<double ***> &distribution_function) {
+void streaming_step_with_periodic_bounds(
+    Kokkos::View<double ***> &buffer_distribution_view,
+    Kokkos::View<double ***> &distribution_function, const int &ghost_layers) {
     const auto [grid_width, grid_height] =
         get_grid_extents(distribution_function);
 
+    // By default, ghost layers is 0, so the streaming step will perform a
+    // periodic boundary operation and wrap the values across the lattice
+    // If we provide a positive ghost_layers integer, it will loop through the
+    // inner lattice skipping the ghost layers
     Kokkos::parallel_for(
         "Streaming Step",
-        Kokkos::MDRangePolicy({0, 0, 0},
-                              {grid_width, grid_height, TOTAL_DIRECTIONS}),
+        Kokkos::MDRangePolicy({0 + ghost_layers, 0 + ghost_layers, 0},
+                              {grid_width - ghost_layers,
+                               grid_height - ghost_layers, TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &current_x, const int &current_y,
                       const int &dir) {
+            // If ghost_layers > 0, new position will never wrap around since
+            // any possible x will be greater than 0 and less than the lattice
+            // width. Same for y.
             auto [new_x, new_y] = calculate_new_position(
                 current_x, current_y, dir, grid_width, grid_height);
 
@@ -227,6 +237,114 @@ void relax_distribution(
             distribution_function(x, y, dir) =
                 std::fma(omega, eq_distribution_value - distribution_value,
                          distribution_value);
+        });
+}
+
+double calc() {
+    return 1;
+}
+double zero() {
+    return 0;
+}
+
+Kokkos::View<double *>
+calculate_wall_velocity_modifier(const double &wall_vel_x,
+                                 const double &wall_vel_y,
+                                 const double &average_density) {
+    Kokkos::View<double *> wall_velocity_modifier("Wall Velocity Modifiers",
+                                                  TOTAL_DIRECTIONS);
+
+    if (wall_vel_x == 0 && wall_vel_y == 0) {
+        Kokkos::parallel_for(
+            "Wall Velocity Modifier Zero Init",
+            Kokkos::RangePolicy(0, TOTAL_DIRECTIONS),
+            KOKKOS_LAMBDA(const int &dir) { wall_velocity_modifier(dir) = 0; });
+        return wall_velocity_modifier;
+    }
+
+    constexpr double c1 = 2.0 / (1.0 / 3.0);
+    const double c2 = c2 * average_density;
+
+    Kokkos::parallel_for(
+        "Wall Velocity Modifier Calculation",
+        Kokkos::RangePolicy(0, TOTAL_DIRECTIONS),
+        KOKKOS_LAMBDA(const int &dir) {
+            const auto [vec_x, vec_y] = velocity_vector[dir];
+
+            const double dot_product = vec_x * wall_vel_x + vec_y * wall_vel_y;
+            wall_velocity_modifier(dir) =
+                c2 * dot_product * velocity_fraction[dir];
+        });
+
+    return wall_velocity_modifier;
+}
+
+void streaming_step_with_bounce_back_and_lid(
+    Kokkos::View<double ***> &buffer_distribution_view,
+    Kokkos::View<double ***> &distribution_function,
+    const Kokkos::View<double *> &lid_velocity_modifiers) {
+
+    static double avg_density = 0;
+
+    const auto [lattice_width, lattice_height] =
+        get_grid_extents(distribution_function);
+
+    streaming_step_with_periodic_bounds(buffer_distribution_view,
+                                        distribution_function, 1);
+
+    // Since we moved all the values to the ghost nodes already, we make the
+    // loop range only be the inner lattice points (i.e. excluding the outer
+    // ghost layers)
+    Kokkos::parallel_for(
+        "Bounce Back Vertical", Kokkos::RangePolicy(1, lattice_height - 1),
+        KOKKOS_LAMBDA(const int &y) {
+            // Left Wall
+            distribution_function(1, y, Direction::Right) =
+                distribution_function(0, y, Direction::Left);
+            // Diagonals
+            distribution_function(1, y, Direction::UpRight) =
+                distribution_function(0, y - 1, Direction::DownLeft);
+            distribution_function(1, y, Direction::DownRight) =
+                distribution_function(0, y + 1, Direction::UpLeft);
+
+            // Right Wall
+            distribution_function(lattice_width - 2, y, Direction::Left) =
+                distribution_function(lattice_width - 1, y, Direction::Right);
+            // Diagonals
+            distribution_function(lattice_width - 2, y, Direction::UpLeft) =
+                distribution_function(lattice_width - 1, y - 1,
+                                      Direction::DownRight);
+            distribution_function(lattice_width - 2, y, Direction::DownLeft) =
+                distribution_function(lattice_width - 1, y + 1,
+                                      Direction::UpRight);
+        });
+
+    Kokkos::parallel_for(
+        "Bounce Back Horizontal", Kokkos::RangePolicy(1, lattice_width - 1),
+        KOKKOS_LAMBDA(const int &x) {
+            // Bottom Wall
+            distribution_function(x, 1, Direction::Up) =
+                distribution_function(x, 0, Direction::Down);
+            // Diagonals
+            distribution_function(x, 1, Direction::UpRight) =
+                distribution_function(x - 1, 0, Direction::DownLeft);
+            distribution_function(x, 1, Direction::UpLeft) =
+                distribution_function(x + 1, 0, Direction::DownRight);
+
+            // Top Wall (Lid)
+            distribution_function(x, lattice_height - 2, Direction::Down) =
+                distribution_function(x, lattice_height - 1, Direction::Up) -
+                lid_velocity_modifiers(Direction::Up);
+            // Diagonals
+            distribution_function(x, lattice_height - 2, Direction::DownLeft) =
+                distribution_function(x + 1, lattice_height - 1,
+                                      Direction::UpRight) -
+                lid_velocity_modifiers(Direction::UpRight);
+            distribution_function(x, lattice_height - 2, Direction::DownRight) =
+                distribution_function(x - 1, lattice_height - 1,
+                                      Direction::UpLeft) -
+                lid_velocity_modifiers(Direction::UpLeft);
+            ;
         });
 }
 
