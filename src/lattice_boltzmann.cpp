@@ -247,44 +247,11 @@ double zero() {
     return 0;
 }
 
-Kokkos::View<double *>
-calculate_wall_velocity_modifier(const double &wall_vel_x,
-                                 const double &wall_vel_y,
-                                 const double &average_density) {
-    Kokkos::View<double *> wall_velocity_modifier("Wall Velocity Modifiers",
-                                                  TOTAL_DIRECTIONS);
-
-    if (wall_vel_x == 0 && wall_vel_y == 0) {
-        Kokkos::parallel_for(
-            "Wall Velocity Modifier Zero Init",
-            Kokkos::RangePolicy(0, TOTAL_DIRECTIONS),
-            KOKKOS_LAMBDA(const int &dir) { wall_velocity_modifier(dir) = 0; });
-        return wall_velocity_modifier;
-    }
-
-    constexpr double c1 = 2.0 / (1.0 / 3.0);
-    const double c2 = c2 * average_density;
-
-    Kokkos::parallel_for(
-        "Wall Velocity Modifier Calculation",
-        Kokkos::RangePolicy(0, TOTAL_DIRECTIONS),
-        KOKKOS_LAMBDA(const int &dir) {
-            const auto [vec_x, vec_y] = velocity_vector[dir];
-
-            const double dot_product = vec_x * wall_vel_x + vec_y * wall_vel_y;
-            wall_velocity_modifier(dir) =
-                c2 * dot_product * velocity_fraction[dir];
-        });
-
-    return wall_velocity_modifier;
-}
-
 void streaming_step_with_bounce_back_and_lid(
     Kokkos::View<double ***> &buffer_distribution_view,
     Kokkos::View<double ***> &distribution_function,
-    const Kokkos::View<double *> &lid_velocity_modifiers) {
-
-    static double avg_density = 0;
+    const Kokkos::View<double **> &density_function, const double &wall_vel_x,
+    const double &wall_vel_y) {
 
     const auto [lattice_width, lattice_height] =
         get_grid_extents(distribution_function);
@@ -319,6 +286,19 @@ void streaming_step_with_bounce_back_and_lid(
                                       Direction::UpRight);
         });
 
+    auto velocity_correction =
+        [&distribution_function, &wall_vel_x, &wall_vel_y](
+            const double &local_density, const Direction direction) -> double {
+        if (wall_vel_x == 0 && wall_vel_y == 0) {
+            return 0;
+        }
+
+        const auto [vec_x, vec_y] = velocity_vector[direction];
+
+        return 2.0 * velocity_fraction[direction] * local_density *
+               (vec_x * wall_vel_x + vec_y * wall_vel_y) / (1.0 / 3.0);
+    };
+
     Kokkos::parallel_for(
         "Bounce Back Horizontal", Kokkos::RangePolicy(1, lattice_width - 1),
         KOKKOS_LAMBDA(const int &x) {
@@ -331,20 +311,23 @@ void streaming_step_with_bounce_back_and_lid(
             distribution_function(x, 1, Direction::UpLeft) =
                 distribution_function(x + 1, 0, Direction::DownRight);
 
+            const double local_density =
+                density_function(x, lattice_height - 2);
+
             // Top Wall (Lid)
             distribution_function(x, lattice_height - 2, Direction::Down) =
                 distribution_function(x, lattice_height - 1, Direction::Up) -
-                lid_velocity_modifiers(Direction::Up);
+                velocity_correction(local_density, Direction::Up);
             // Diagonals
             distribution_function(x, lattice_height - 2, Direction::DownLeft) =
                 distribution_function(x + 1, lattice_height - 1,
                                       Direction::UpRight) -
-                lid_velocity_modifiers(Direction::UpRight);
+                velocity_correction(density_function(x, lattice_height - 2),
+                                    Direction::UpRight);
             distribution_function(x, lattice_height - 2, Direction::DownRight) =
                 distribution_function(x - 1, lattice_height - 1,
                                       Direction::UpLeft) -
-                lid_velocity_modifiers(Direction::UpLeft);
-            ;
+                velocity_correction(local_density, Direction::UpLeft);
         });
 }
 

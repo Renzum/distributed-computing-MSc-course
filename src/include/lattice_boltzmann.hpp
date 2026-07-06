@@ -99,8 +99,7 @@ inline void relax_distribution(const Functions &functions, const double omega) {
  */
 Kokkos::View<double *>
 calculate_wall_velocity_modifier(const double &wall_vel_x,
-                                 const double &wall_vel_y,
-                                 const double &average_density);
+                                 const double &wall_vel_y);
 
 /**
  * Assumes a single layer of ghost nodes exists on the edges of the lattice
@@ -115,13 +114,15 @@ calculate_wall_velocity_modifier(const double &wall_vel_x,
 void streaming_step_with_bounce_back_and_lid(
     Kokkos::View<double ***> &buffer_distribution_view,
     Kokkos::View<double ***> &distribution_function,
-    const Kokkos::View<double *> &lid_velocity_modifiers);
-inline void streaming_step_with_bounce_back_and_lid(
-    Functions &functions,
-    const Kokkos::View<double *> &lid_velocity_modifiers) {
+    const Kokkos::View<double **> &density_function,
+    const double &lid_vel_x = 0, const double &lid_vel_y = 0);
+inline void
+streaming_step_with_bounce_back_and_lid(Functions &functions,
+                                        const double &lid_vel_x = 0,
+                                        const double &lid_vel_y = 0) {
     streaming_step_with_bounce_back_and_lid(
         functions.buffer_distribution_function, functions.distribution_function,
-        lid_velocity_modifiers);
+        functions.density_function, lid_vel_x, lid_vel_y);
 }
 
 } // namespace LatticeBoltzmann
