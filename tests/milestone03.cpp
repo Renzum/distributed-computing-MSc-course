@@ -86,8 +86,7 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
     auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
 
-    const int velocity_vector_x[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_X;
-    const int velocity_vector_y[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_Y;
+    int velocity_vector_x, velocity_vector_y;
 
     auto check_local_momentum = [&lbm_functions, &velocity_vector_x,
                                  &velocity_vector_y]() {
@@ -103,13 +102,13 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
                 long double sum_x = 0;
                 long double sum_y = 0;
                 for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                    const int vec_x = velocity_vector_x[dir];
-                    const int vec_y = velocity_vector_y[dir];
+                    get_velocity_vector(static_cast<Direction>(dir),
+                                        velocity_vector_x, velocity_vector_y);
 
-                    sum_x +=
-                        lbm_functions.distribution_function(x, y, dir) * vec_x;
-                    sum_y +=
-                        lbm_functions.distribution_function(x, y, dir) * vec_y;
+                    sum_x += lbm_functions.distribution_function(x, y, dir) *
+                             velocity_vector_x;
+                    sum_y += lbm_functions.distribution_function(x, y, dir) *
+                             velocity_vector_y;
                 }
 
                 EXPECT_NEAR(expected_x, sum_x, 1e-10 * std::abs(expected_x))

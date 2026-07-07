@@ -135,8 +135,7 @@ void calculate_local_average_velocity(
         "Average Local Velocity Calculation",
         Kokkos::MDRangePolicy({0, 0}, {grid_width, grid_height}),
         KOKKOS_LAMBDA(const int &x, const int &y) {
-            const int velocity_vector_x[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_X;
-            const int velocity_vector_y[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_Y;
+            int velocity_vector_x, velocity_vector_y;
 
             const double inverse_density = 1.0 / density_function(x, y);
 
@@ -144,11 +143,12 @@ void calculate_local_average_velocity(
             double vec_y = 0;
 
             for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                const int temp_x = velocity_vector_x[dir];
-                const int temp_y = velocity_vector_y[dir];
 
-                vec_x += temp_x * distribution_function(x, y, dir);
-                vec_y += temp_y * distribution_function(x, y, dir);
+                get_velocity_vector(static_cast<Direction>(dir),
+                                    velocity_vector_x, velocity_vector_y);
+
+                vec_x += velocity_vector_x * distribution_function(x, y, dir);
+                vec_y += velocity_vector_y * distribution_function(x, y, dir);
             }
 
             vec_x *= inverse_density;
@@ -179,18 +179,17 @@ void calculate_equilibrium_distribution(
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
             // This is where the fun begins
 
-            const double velocity_fraction[TOTAL_DIRECTIONS] =
-                VELOCITY_FRACTIONS;
-
-            const int velocity_vector_x[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_X;
-            const int velocity_vector_y[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_Y;
+            double velocity_fraction;
+            get_velocity_fraction(static_cast<Direction>(dir),
+                                  velocity_fraction);
 
             // Precompute the w_i * rho coefficient
             const double coefficient =
-                velocity_fraction[dir] * density_function(x, y);
+                velocity_fraction * density_function(x, y);
 
-            const int velocity_vec_x = velocity_vector_x[dir];
-            const int velocity_vec_y = velocity_vector_y[dir];
+            int velocity_vec_x, velocity_vec_y;
+            get_velocity_vector(static_cast<Direction>(dir), velocity_vec_x,
+                                velocity_vec_y);
 
             const double avg_velocity_x =
                 local_average_velocity_function(x, y, 0);
@@ -314,19 +313,18 @@ void streaming_step_with_bounce_back_and_lid(
                     return 0;
                 }
 
-                const double velocity_fraction[TOTAL_DIRECTIONS] =
-                    VELOCITY_FRACTIONS;
+                double velocity_fraction;
+                get_velocity_fraction(static_cast<Direction>(direction),
+                                      velocity_fraction);
 
-                const int velocity_vector_x[TOTAL_DIRECTIONS] =
-                    VELOCITY_VECTORS_X;
-                const int velocity_vector_y[TOTAL_DIRECTIONS] =
-                    VELOCITY_VECTORS_Y;
+                int velocity_vector_x, velocity_vector_y;
+                get_velocity_vector(static_cast<Direction>(direction),
+                                    velocity_vector_x, velocity_vector_y);
 
-                const int vec_x = velocity_vector_x[direction];
-                const int vec_y = velocity_vector_y[direction];
-
-                return 2.0 * velocity_fraction[direction] * local_density *
-                       (vec_x * wall_vel_x + vec_y * wall_vel_y) / (1.0 / 3.0);
+                return 2.0 * velocity_fraction * local_density *
+                       (velocity_vector_x * wall_vel_x +
+                        velocity_vector_y * wall_vel_y) /
+                       (1.0 / 3.0);
             };
 
             // Bottom Wall
