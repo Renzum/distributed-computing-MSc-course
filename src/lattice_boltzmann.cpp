@@ -13,27 +13,25 @@ namespace LatticeBoltzmann {
 
 namespace {
 
-std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
-                                                   const int &direction,
-                                                   int grid_width,
-                                                   int grid_height) {
-    int new_x, new_y;
-
+KOKKOS_INLINE_FUNCTION
+void calculate_new_position(const int &old_x, const int &old_y,
+                            const int &direction, int grid_width,
+                            int grid_height, int &new_x, int &new_y) {
     switch (direction) {
     case Direction::Left:
     case Direction::UpLeft:
     case Direction::DownLeft:
         // x wraps around to prevent segfault
-        new_x = (x == 0) ? (grid_width - 1) : (x - 1);
+        new_x = (old_x == 0) ? (grid_width - 1) : (old_x - 1);
         break;
     case Direction::Right:
     case Direction::UpRight:
     case Direction::DownRight:
         // x wraps around to prevent segfault
-        new_x = (x == grid_width - 1) ? 0 : (x + 1);
+        new_x = (old_x == grid_width - 1) ? 0 : (old_x + 1);
         break;
     default:
-        new_x = x; // x doesn't change, no need to check
+        new_x = old_x; // x doesn't change, no need to check
         break;
     }
 
@@ -42,20 +40,18 @@ std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
     case Direction::DownRight:
     case Direction::DownLeft:
         // y wraps around to prevent segfaul
-        new_y = (y == 0) ? (grid_height - 1) : (y - 1);
+        new_y = (old_y == 0) ? (grid_height - 1) : (old_y - 1);
         break;
     case Direction::Up:
     case Direction::UpRight:
     case Direction::UpLeft:
         // y wraps around to prevent segfaul
-        new_y = (y == grid_height - 1) ? 0 : (y + 1);
+        new_y = (old_y == grid_height - 1) ? 0 : (old_y + 1);
         break;
     default:
-        new_y = y; // y doesn't change, no need to check
+        new_y = old_y; // y doesn't change, no need to check
         break;
     }
-
-    return std::tuple<int, int>(new_x, new_y);
 }
 
 } // namespace
@@ -95,8 +91,9 @@ void streaming_step_with_periodic_bounds(
             // If ghost_layers > 0, new position will never wrap around since
             // any possible x will be greater than 0 and less than the lattice
             // width. Same for y.
-            auto [new_x, new_y] = calculate_new_position(
-                current_x, current_y, dir, grid_width, grid_height);
+            int new_x, new_y;
+            calculate_new_position(current_x, current_y, dir, grid_width,
+                                   grid_height, new_x, new_y);
 
             // We move the values to the buffer according to their velocity
             // And then simply swap the buffer with the distribution function
