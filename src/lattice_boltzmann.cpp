@@ -283,22 +283,23 @@ void streaming_step_with_bounce_back_and_lid(
                                       Direction::UpRight);
         });
 
-    auto velocity_correction =
-        [&distribution_function, &wall_vel_x, &wall_vel_y](
-            const double &local_density, const Direction direction) -> double {
-        if (wall_vel_x == 0 && wall_vel_y == 0) {
-            return 0;
-        }
-
-        const auto [vec_x, vec_y] = velocity_vector[direction];
-
-        return 2.0 * velocity_fraction[direction] * local_density *
-               (vec_x * wall_vel_x + vec_y * wall_vel_y) / (1.0 / 3.0);
-    };
-
     Kokkos::parallel_for(
         "Bounce Back Horizontal", Kokkos::RangePolicy(1, lattice_width - 1),
         KOKKOS_LAMBDA(const int &x) {
+            auto velocity_correction =
+                [&distribution_function, &wall_vel_x,
+                 &wall_vel_y](const double &local_density,
+                              const Direction direction) -> double {
+                if (wall_vel_x == 0 && wall_vel_y == 0) {
+                    return 0;
+                }
+
+                const auto [vec_x, vec_y] = velocity_vector[direction];
+
+                return 2.0 * velocity_fraction[direction] * local_density *
+                       (vec_x * wall_vel_x + vec_y * wall_vel_y) / (1.0 / 3.0);
+            };
+
             // Bottom Wall
             distribution_function(x, 1, Direction::Up) =
                 distribution_function(x, 0, Direction::Down);
