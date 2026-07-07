@@ -143,6 +143,11 @@ TEST(MILESTONE05, MOVING_LID) {
     const double lid_vel_x = 0.1;
     const double lid_vel_y = 0.0;
 
+    const double velocity_fraction[TOTAL_DIRECTIONS] = VELOCITY_FRACTIONS;
+
+    const int velocity_vector_x[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_X;
+    const int velocity_vector_y[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_Y;
+
     for (int i = 0; i < 20; i++) {
         LatticeBoltzmann::calculate_density(lbm_functions);
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
@@ -157,10 +162,13 @@ TEST(MILESTONE05, MOVING_LID) {
 
         const double tolerance = std::numeric_limits<double>::epsilon();
 
-        auto correction_calculation = [&lbm_functions, &lid_vel_x, &lid_vel_y](
-                                          const int &x, const int &y,
-                                          const Direction &dir) -> double {
-            const auto [vec_x, vec_y] = velocity_vector[dir];
+        auto correction_calculation =
+            [&lbm_functions, &lid_vel_x, &lid_vel_y, &velocity_vector_x,
+             &velocity_vector_y, &velocity_fraction](
+                const int &x, const int &y, const Direction &dir) -> double {
+            const int vec_x = velocity_vector_x[dir];
+            const int vec_y = velocity_vector_y[dir];
+
             return 2.0 * velocity_fraction[dir] *
                    lbm_functions.density_function(x, y) *
                    (lid_vel_x * vec_x + lid_vel_y * vec_y) / (1.0 / 3.0);

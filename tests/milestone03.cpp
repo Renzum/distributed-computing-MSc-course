@@ -86,7 +86,11 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
     auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
 
-    auto check_local_momentum = [&lbm_functions]() {
+    const int velocity_vector_x[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_X;
+    const int velocity_vector_y[TOTAL_DIRECTIONS] = VELOCITY_VECTORS_Y;
+
+    auto check_local_momentum = [&lbm_functions, &velocity_vector_x,
+                                 &velocity_vector_y]() {
         for (int x = 0; x < grid_width; x++) {
             for (int y = 0; y < grid_height; y++) {
                 const long double expected_x =
@@ -99,7 +103,8 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
                 long double sum_x = 0;
                 long double sum_y = 0;
                 for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                    auto [vec_x, vec_y] = velocity_vector[dir];
+                    const int vec_x = velocity_vector_x[dir];
+                    const int vec_y = velocity_vector_y[dir];
 
                     sum_x +=
                         lbm_functions.distribution_function(x, y, dir) * vec_x;

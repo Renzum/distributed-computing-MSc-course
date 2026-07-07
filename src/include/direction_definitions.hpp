@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Kokkos_Core.hpp>
 #include <array>
 
 #define TOTAL_DIRECTIONS 9 // 8 + 1 for the looping
@@ -15,11 +16,15 @@ enum Direction {
     DownRight = 8,
 };
 
-constexpr std::array<int, 2> velocity_vector[] = {{0, 0},  {1, 0},   {0, 1},
-                                                  {-1, 0}, {0, -1},  {1, 1},
-                                                  {-1, 1}, {-1, -1}, {1, -1}};
+// #define VELOCITY_VECTORS \
+//     {{0, 0}, {1, 0},  {0, 1},   {-1, 0}, {0, -1}, \
+//      {1, 1}, {-1, 1}, {-1, -1}, {1, -1}};
 
-constexpr double velocity_fraction[] = {
-    4.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,
-    1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0,
-};
+#define VELOCITY_VECTORS_X {0, 1, 0, -1, 0, 1, -1, -1, 1}
+#define VELOCITY_VECTORS_Y {0, 0, 1, 0, -1, 1, 1, -1, -1}
+
+#define VELOCITY_FRACTIONS                                                     \
+    {                                                                          \
+        4.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,             \
+        1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0,                        \
+    };
