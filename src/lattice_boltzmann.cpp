@@ -1,3 +1,4 @@
+#include <array>
 #include <cmath>
 #include <functional>
 #include <tuple>
@@ -57,11 +58,6 @@ std::tuple<int, int> inline calculate_new_position(const int &x, const int &y,
     return std::tuple<int, int>(new_x, new_y);
 }
 
-template <typename T>
-std::tuple<int, int> get_grid_extents(const Kokkos::View<T> &grid) {
-    return std::tuple(grid.extent_int(0), grid.extent_int(1));
-}
-
 } // namespace
 
 Functions::Functions(int grid_width, int grid_height) {
@@ -82,8 +78,8 @@ Functions::Functions(int grid_width, int grid_height) {
 void streaming_step_with_periodic_bounds(
     Kokkos::View<double ***> &buffer_distribution_view,
     Kokkos::View<double ***> &distribution_function, const int &ghost_layers) {
-    const auto [grid_width, grid_height] =
-        get_grid_extents(distribution_function);
+    const int grid_width = distribution_function.extent_int(0);
+    const int grid_height = distribution_function.extent_int(1);
 
     // By default, ghost layers is 0, so the streaming step will perform a
     // periodic boundary operation and wrap the values across the lattice
@@ -114,7 +110,8 @@ void streaming_step_with_periodic_bounds(
 
 void calculate_density(const Kokkos::View<double **> &density_function,
                        const Kokkos::View<double ***> &distribution_function) {
-    const auto [grid_width, grid_height] = get_grid_extents(density_function);
+    const int grid_width = distribution_function.extent_int(0);
+    const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Density Calculation",
@@ -134,8 +131,8 @@ void calculate_local_average_velocity(
     const Kokkos::View<double ***> &distribution_function,
     const Kokkos::View<double **> &density_function) {
 
-    const auto [grid_width, grid_height] =
-        get_grid_extents(local_velocty_function);
+    const int grid_width = distribution_function.extent_int(0);
+    const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Average Local Velocity Calculation",
@@ -164,8 +161,8 @@ void calculate_equilibrium_distribution(
     const Kokkos::View<double ***> &equilibrium_distribution,
     const Kokkos::View<double **> &density_function,
     const Kokkos::View<double ***> &local_average_velocity_function) {
-    const auto [grid_width, grid_height] =
-        get_grid_extents(equilibrium_distribution);
+    const int grid_width = equilibrium_distribution.extent_int(0);
+    const int grid_height = equilibrium_distribution.extent_int(1);
 
     // Calculate constants at compile time
     constexpr double C1 = 3.0;
@@ -222,8 +219,8 @@ void relax_distribution(
     const Kokkos::View<double ***> &distribution_function,
     const Kokkos::View<double ***> &equilibrium_distribution_function,
     const double omega) {
-    const auto [grid_width, grid_height] =
-        get_grid_extents(distribution_function);
+    const int grid_width = distribution_function.extent_int(0);
+    const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Relaxation",
@@ -253,8 +250,8 @@ void streaming_step_with_bounce_back_and_lid(
     const Kokkos::View<double **> &density_function, const double &wall_vel_x,
     const double &wall_vel_y) {
 
-    const auto [lattice_width, lattice_height] =
-        get_grid_extents(distribution_function);
+    const int lattice_width = distribution_function.extent_int(0);
+    const int lattice_height = distribution_function.extent_int(1);
 
     streaming_step_with_periodic_bounds(buffer_distribution_view,
                                         distribution_function, 1);
