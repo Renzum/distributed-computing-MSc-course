@@ -15,7 +15,7 @@ struct Functions {
      * 3D Lattice of x and y size where each cell is an array of 9 elements
      * representing all the directions for particles
      */
-    Kokkos::View<double ***> distribution_function;
+    Kokkos::View<double ***, Kokkos::HostSpace> distribution_function;
 
     /**
      * 3D Lattice of x and y size where each cell is an array of 9 elements
@@ -23,19 +23,19 @@ struct Functions {
      *
      * Used as a buffer for storing temporary results.
      */
-    Kokkos::View<double ***> buffer_distribution_function;
+    Kokkos::View<double ***, Kokkos::HostSpace> buffer_distribution_function;
 
     /**
      * 2D Lattice of x and y size where each cell represents the density of
      * the distribution function
      */
-    Kokkos::View<double **> density_function;
+    Kokkos::View<double **, Kokkos::HostSpace> density_function;
 
     /**
      * 3D Lattice of x and y size where each cell holds an array of size 2
      * that represents a 2D velocity vector
      */
-    Kokkos::View<double ***> local_average_velocity;
+    Kokkos::View<double ***, Kokkos::HostSpace> local_average_velocity;
 
     /**
      * Allocates the necessary views with the provided lattice width and
@@ -45,8 +45,8 @@ struct Functions {
 };
 
 void streaming_step_with_periodic_bounds(
-    Kokkos::View<double ***> &buffer_distribution_view,
-    Kokkos::View<double ***> &distribution_function,
+    Kokkos::View<double ***, Kokkos::HostSpace> &buffer_distribution_view,
+    Kokkos::View<double ***, Kokkos::HostSpace> &distribution_function,
     const int &ghost_layers = 0);
 inline void streaming_step_with_periodic_bounds(Functions &functions,
                                                 const int &ghost_layers = 0) {
@@ -111,18 +111,19 @@ calculate_wall_velocity_modifier(const double &wall_vel_x,
  * To treat the top wall as a fixed one instead of moving, simply initialize the
  * `lid_velocity_modifiers` as all 0
  */
-void streaming_step_with_bounce_back_and_lid(
-    Kokkos::View<double ***> &buffer_distribution_view,
-    Kokkos::View<double ***> &distribution_function,
-    const Kokkos::View<double **> &density_function,
-    const double &lid_vel_x = 0, const double &lid_vel_y = 0);
-inline void
-streaming_step_with_bounce_back_and_lid(Functions &functions,
-                                        const double &lid_vel_x = 0,
-                                        const double &lid_vel_y = 0) {
-    streaming_step_with_bounce_back_and_lid(
-        functions.buffer_distribution_function, functions.distribution_function,
-        functions.density_function, lid_vel_x, lid_vel_y);
-}
+// void streaming_step_with_bounce_back_and_lid(
+//     Kokkos::View<double ***> &buffer_distribution_view,
+//     Kokkos::View<double ***> &distribution_function,
+//     const Kokkos::View<double **> &density_function,
+//     const double &lid_vel_x = 0, const double &lid_vel_y = 0);
+// inline void
+// streaming_step_with_bounce_back_and_lid(Functions &functions,
+//                                         const double &lid_vel_x = 0,
+//                                         const double &lid_vel_y = 0) {
+//     streaming_step_with_bounce_back_and_lid(
+//         functions.buffer_distribution_function,
+//         functions.distribution_function, functions.density_function,
+//         lid_vel_x, lid_vel_y);
+// }
 
 } // namespace LatticeBoltzmann

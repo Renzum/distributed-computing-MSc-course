@@ -72,15 +72,23 @@ Functions::Functions(int grid_width, int grid_height) {
 };
 
 void streaming_step_with_periodic_bounds(
-    Kokkos::View<double ***> &buffer_distribution_view,
-    Kokkos::View<double ***> &distribution_function, const int &ghost_layers) {
-    const int grid_width = distribution_function.extent_int(0);
-    const int grid_height = distribution_function.extent_int(1);
+    Kokkos::View<double ***, Kokkos::HostSpace> &host_buffer_distribution_view,
+    Kokkos::View<double ***, Kokkos::HostSpace> &host_distribution_function,
+    const int &ghost_layers) {
+    const int grid_width = host_distribution_function.extent_int(0);
+    const int grid_height = host_distribution_function.extent_int(1);
 
     // By default, ghost layers is 0, so the streaming step will perform a
     // periodic boundary operation and wrap the values across the lattice
     // If we provide a positive ghost_layers integer, it will loop through the
     // inner lattice skipping the ghost layers
+    Kokkos::View<double ***> distribution_function(
+        "GPU Distribution Function", grid_width, grid_height, TOTAL_DIRECTIONS);
+    Kokkos::View<double ***> buffer_distribution_view(
+        "GPU Buffer", grid_width, grid_height, TOTAL_DIRECTIONS);
+
+    Kokkos::deep_copy(distribution_function, host_distribution_function);
+
     Kokkos::parallel_for(
         "Streaming Step",
         Kokkos::MDRangePolicy({0 + ghost_layers, 0 + ghost_layers, 0},
@@ -103,6 +111,7 @@ void streaming_step_with_periodic_bounds(
         });
 
     Kokkos::kokkos_swap(distribution_function, buffer_distribution_view);
+    Kokkos::deep_copy(host_distribution_function, distribution_function);
 }
 
 void calculate_density(const Kokkos::View<double **> &density_function,
@@ -272,8 +281,8 @@ void streaming_step_with_bounce_back_and_lid(
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
 
-    streaming_step_with_periodic_bounds(buffer_distribution_view,
-                                        distribution_function, 1);
+    // streaming_step_with_periodic_bounds(buffer_distribution_view,
+    //                                     distribution_function, 1);
 
     // Since we moved all the values to the ghost nodes already, we make the
     // loop range only be the inner lattice points (i.e. excluding the outer
