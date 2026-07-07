@@ -144,7 +144,9 @@ void calculate_local_average_velocity(
             double vec_y = 0;
 
             for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
-                auto [temp_x, temp_y] = velocity_vector[dir];
+                const int temp_x = velocity_vector[dir][0];
+                const int temp_y = velocity_vector[dir][1];
+
                 vec_x += temp_x * distribution_function(x, y, dir);
                 vec_y += temp_y * distribution_function(x, y, dir);
             }
@@ -181,7 +183,8 @@ void calculate_equilibrium_distribution(
             const double coefficient =
                 velocity_fraction[dir] * density_function(x, y);
 
-            const auto [velocity_vec_x, velocity_vec_y] = velocity_vector[dir];
+            const int velocity_vec_x = velocity_vector[dir][0];
+            const int velocity_vec_y = velocity_vector[dir][1];
 
             const double avg_velocity_x =
                 local_average_velocity_function(x, y, 0);
@@ -305,7 +308,8 @@ void streaming_step_with_bounce_back_and_lid(
                     return 0;
                 }
 
-                const auto [vec_x, vec_y] = velocity_vector[direction];
+                const int vec_x = velocity_vector[direction][0];
+                const int vec_y = velocity_vector[direction][1];
 
                 return 2.0 * velocity_fraction[direction] * local_density *
                        (vec_x * wall_vel_x + vec_y * wall_vel_y) / (1.0 / 3.0);

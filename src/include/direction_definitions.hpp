@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>
+#include <array>
 
 #define TOTAL_DIRECTIONS 9 // 8 + 1 for the looping
 enum Direction {
@@ -15,15 +15,11 @@ enum Direction {
     DownRight = 8,
 };
 
-namespace {
-
-constexpr std::tuple<int, int> velocity_vector[] = {{0, 0},  {1, 0},   {0, 1},
-                                                    {-1, 0}, {0, -1},  {1, 1},
-                                                    {-1, 1}, {-1, -1}, {1, -1}};
+constexpr std::array<int, 2> velocity_vector[] = {{0, 0},  {1, 0},   {0, 1},
+                                                  {-1, 0}, {0, -1},  {1, 1},
+                                                  {-1, 1}, {-1, -1}, {1, -1}};
 
 constexpr double velocity_fraction[] = {
     4.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,  1.0 / 9.0,
     1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0, 1.0 / 36.0,
 };
-
-}
