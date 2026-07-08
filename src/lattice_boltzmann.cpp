@@ -306,6 +306,21 @@ void streaming_step_with_bounce_back_and_lid(
                                          y, Direction::UpRight);
         });
 
+    double w6;
+    get_velocity_fraction(Direction::UpLeft, w6);
+    int c6_x, c6_y;
+    get_velocity_vector(Direction::UpLeft, c6_x, c6_y);
+
+    double w2;
+    get_velocity_fraction(Direction::Up, w2);
+    int c2_x, c2_y;
+    get_velocity_vector(Direction::UpLeft, c2_x, c2_y);
+
+    double w5;
+    get_velocity_fraction(Direction::UpRight, w5);
+    int c5_x, c5_y;
+    get_velocity_vector(Direction::UpLeft, c5_x, c5_y);
+
     Kokkos::parallel_for(
         "Bounce Back Horizontal Walls",
         Kokkos::RangePolicy(ghost_layers.left,
@@ -324,23 +339,31 @@ void streaming_step_with_bounce_back_and_lid(
                 buffer_distribution_view(x, ghost_layers.bottom,
                                          Direction::DownRight);
 
-            // Top Wall
+            const double local_density =
+                density_function(x, lattice_height - ghost_layers.top - 1);
+            // Top Wall (AKA Lid)
             distribution_function(x, lattice_height - ghost_layers.top - 1,
                                   Direction::DownRight) =
                 buffer_distribution_view(x,
                                          lattice_height - ghost_layers.top - 1,
-                                         Direction::UpLeft);
+                                         Direction::UpLeft) -
+                2.0 * w6 * local_density *
+                    Kokkos::fma(lid_vel_x, c6_x, lid_vel_y * c6_y) * 3;
 
             distribution_function(x, lattice_height - ghost_layers.top - 1,
                                   Direction::Down) =
                 buffer_distribution_view(
-                    x, lattice_height - ghost_layers.top - 1, Direction::Up);
+                    x, lattice_height - ghost_layers.top - 1, Direction::Up) -
+                2.0 * w2 * local_density *
+                    Kokkos::fma(lid_vel_x, c2_x, lid_vel_y * c2_y) * 3;
 
             distribution_function(x, lattice_height - ghost_layers.top - 1,
                                   Direction::DownLeft) =
                 buffer_distribution_view(x,
                                          lattice_height - ghost_layers.top - 1,
-                                         Direction::UpRight);
+                                         Direction::UpRight) -
+                2.0 * w5 * local_density *
+                    Kokkos::fma(lid_vel_x, c5_x, lid_vel_y * c5_y) * 3;
         });
 }
 
