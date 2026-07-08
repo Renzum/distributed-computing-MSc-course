@@ -6,13 +6,11 @@
 #include <distribution_initializers.hpp>
 #include <lattice_boltzmann.hpp>
 
-TEST(MILESTONE02, STREAMING_STEP) {
-    const int grid_width = 3;
-    const int grid_height = 3;
+void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
+                    const LatticeBoltzmann::GhostLayers &ghost_layers = {}) {
 
-    auto lbm_functions = LatticeBoltzmann::Functions(grid_width, grid_height);
-
-    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
+    const int grid_width = lbm_functions.distribution_function.extent_int(0);
+    const int grid_height = lbm_functions.distribution_function.extent_int(1);
 
     auto host_buffer =
         Kokkos::create_mirror_view(lbm_functions.distribution_function);
@@ -40,8 +38,9 @@ TEST(MILESTONE02, STREAMING_STEP) {
         return (y == 0) ? grid_height - 1 : y - 1;
     };
 
-    for (int x = 0; x < grid_width; x++) {
-        for (int y = 0; y < grid_height; y++) {
+    for (int x = ghost_layers.left; x < grid_width - ghost_layers.right; x++) {
+        for (int y = ghost_layers.bottom; y < grid_height - ghost_layers.top;
+             y++) {
 
             ASSERT_EQ(host_buffer(x, y, Direction::Center),
                       lbm_functions.host_distribution_function(
@@ -56,63 +55,35 @@ TEST(MILESTONE02, STREAMING_STEP) {
                           x, down(y), Direction::Down));
         }
     }
+}
 
-    // ASSERT_EQ(host_buffer(1, 1, Direction::Up),
-    //           lbm_functions.host_distribution_function(1, 2, Direction::Up))
-    //     << "Values with `UP` velocity need to moved to the cell above.";
+TEST(MILESTONE02, STREAMING_STEP_NO_GHOST_LAYERS) {
+    auto ghost_layers = LatticeBoltzmann::GhostLayers{};
+    auto lbm_functions = LatticeBoltzmann::Functions(20, 20);
 
-    // ASSERT_EQ(host_buffer(1, 1, Direction::Down),
-    //           lbm_functions.host_distribution_function(1, 0,
-    //           Direction::Down))
-    //     << "Values with `DOWN` velocity need to moved to the cell below.";
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    // ASSERT_EQ(host_buffer(1, 1, Direction::Left),
-    //           lbm_functions.host_distribution_function(0, 1,
-    //           Direction::Left))
-    //     << "Values with `LEFT` velocity need to moved to the cell to the
-    //     left.";
+    streaming_test(lbm_functions);
+}
 
-    // ASSERT_EQ(host_buffer(1, 1, Direction::Right),
-    //           lbm_functions.host_distribution_function(2, 1,
-    //           Direction::Right))
-    //     << "Values with `RIGHT` velocity need to moved to the cell to the "
-    //        "right.";
+TEST(MILESTONE02, STREAMING_STEP_ALL_GHOST_LAYERS) {
+    auto ghost_layers = LatticeBoltzmann::GhostLayers{1, 1, 1, 1};
+    auto lbm_functions = LatticeBoltzmann::Functions(
+        20 + ghost_layers.left + ghost_layers.right,
+        20 + ghost_layers.bottom + ghost_layers.top);
 
-    // ASSERT_EQ(host_buffer(1, 1, Direction::UpLeft),
-    //           lbm_functions.host_distribution_function(0, 2,
-    //           Direction::UpLeft))
-    //     << "Values with `UPLEFT` velocity need to moved to the cell to the up
-    //     "
-    //        "right.";
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    // ASSERT_EQ(
-    //     host_buffer(1, 1, Direction::UpRight),
-    //     lbm_functions.host_distribution_function(2, 2, Direction::UpRight))
-    //     << "Values with `UPRIGHT` velocity need to moved to the cell to the
-    //     up "
-    //        "right.";
+    streaming_test(lbm_functions);
+}
 
-    // ASSERT_EQ(
-    //     host_buffer(1, 1, Direction::DownLeft),
-    //     lbm_functions.host_distribution_function(0, 0, Direction::DownLeft))
-    //     << "Values with `DOWNLEFT` velocity need to moved to the cell to the
-    //     "
-    //        "bottom left.";
+TEST(MILESTONE02, STREAMING_STEP_LEFT_GHOST_LAYER) {
+    auto ghost_layers = LatticeBoltzmann::GhostLayers{0, 0, 1, 0};
+    auto lbm_functions = LatticeBoltzmann::Functions(
+        20 + ghost_layers.left + ghost_layers.right,
+        20 + ghost_layers.bottom + ghost_layers.top);
 
-    // ASSERT_EQ(
-    //     host_buffer(1, 1, Direction::DownRight),
-    //     lbm_functions.host_distribution_function(2, 0, Direction::DownRight))
-    //     << "Values with `DOWNLEFT` velocity need to moved to the cell to the
-    //     "
-    //        "bottom right.";
+    LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    // ASSERT_EQ(host_buffer(0, 1, Direction::Left),
-    //           lbm_functions.host_distribution_function(2, 1,
-    //           Direction::Left))
-    //     << "Values wrap around borders correctly.";
-
-    // ASSERT_EQ(
-    //     host_buffer(0, 0, Direction::DownLeft),
-    //     lbm_functions.host_distribution_function(2, 2, Direction::DownLeft))
-    //     << "Values wrap around borders correctly.";
+    streaming_test(lbm_functions);
 }

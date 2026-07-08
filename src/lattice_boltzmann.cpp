@@ -36,13 +36,13 @@ void calculate_new_position(const int &old_x, const int &old_y,
     case Direction::Down:
     case Direction::DownRight:
     case Direction::DownLeft:
-        // y wraps around to prevent segfaul
+        // y wraps around to prevent segfault
         new_y = (old_y == 0) ? (grid_height - 1) : (old_y - 1);
         break;
     case Direction::Up:
     case Direction::UpRight:
     case Direction::UpLeft:
-        // y wraps around to prevent segfaul
+        // y wraps around to prevent segfault
         new_y = (old_y == grid_height - 1) ? 0 : (old_y + 1);
         break;
     default:
@@ -80,24 +80,23 @@ Functions::Functions(const int grid_width, const int grid_height,
 
 void streaming_step_with_periodic_bounds(
     DistributionFunction &buffer_distribution_view,
-    DistributionFunction &distribution_function, const int ghost_layers) {
+    DistributionFunction &distribution_function,
+    const GhostLayers &ghost_layers) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
 
     // By default, ghost layers is 0, so the streaming step will perform a
     // periodic boundary operation and wrap the values across the lattice
-    // If we provide a positive ghost_layers integer, it will loop through the
+    // If we provide positive ghost_layers integers, it will loop through the
     // inner lattice skipping the ghost layers
     Kokkos::parallel_for(
         "Streaming Step",
-        Kokkos::MDRangePolicy({ghost_layers, ghost_layers, 0},
-                              {grid_width - ghost_layers,
-                               grid_height - ghost_layers, TOTAL_DIRECTIONS}),
+        Kokkos::MDRangePolicy({ghost_layers.left, ghost_layers.bottom, 0},
+                              {grid_width - ghost_layers.right,
+                               grid_height - ghost_layers.top,
+                               TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &current_x, const int &current_y,
                       const int &dir) {
-            // If ghost_layers > 0, new position will never wrap around since
-            // any possible x will be greater than 0 and less than the lattice
-            // width. Same for y.
             int new_x, new_y;
             calculate_new_position(current_x, current_y, dir, grid_width,
                                    grid_height, new_x, new_y);
@@ -112,17 +111,17 @@ void streaming_step_with_periodic_bounds(
     Kokkos::kokkos_swap(distribution_function, buffer_distribution_view);
 }
 
-void calculate_density(DensityFunction density_function,
-                       DistributionFunction distribution_function,
-                       const int ghost_layers) {
+void calculate_density(DensityFunction &density_function,
+                       const DistributionFunction &distribution_function,
+                       const GhostLayers &ghost_layers) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Density Calculation",
         Kokkos::MDRangePolicy(
-            {ghost_layers, ghost_layers},
-            {grid_width - ghost_layers, grid_height - ghost_layers}),
+            {ghost_layers.left, ghost_layers.bottom},
+            {grid_width - ghost_layers.right, grid_height - ghost_layers.top}),
         KOKKOS_LAMBDA(const int &x, const int &y) {
             double local_density = 0;
             for (int dir = 0; dir < TOTAL_DIRECTIONS; dir++) {
@@ -134,17 +133,17 @@ void calculate_density(DensityFunction density_function,
 }
 
 void calculate_local_average_velocity(
-    LocalAverageVelocity local_velocty_function,
-    DistributionFunction distribution_function,
-    DensityFunction density_function, const int ghost_layers) {
+    LocalAverageVelocity &local_velocty_function,
+    const DistributionFunction &distribution_function,
+    const DensityFunction &density_function, const GhostLayers &ghost_layers) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Average Local Velocity Calculation",
         Kokkos::MDRangePolicy(
-            {ghost_layers, ghost_layers},
-            {grid_width - ghost_layers, grid_height - ghost_layers}),
+            {ghost_layers.left, ghost_layers.bottom},
+            {grid_width - ghost_layers.right, grid_height - ghost_layers.top}),
         KOKKOS_LAMBDA(const int &x, const int &y) {
             int velocity_vector_x, velocity_vector_y;
 
@@ -171,10 +170,10 @@ void calculate_local_average_velocity(
 }
 
 void calculate_equilibrium_distribution(
-    DistributionFunction equilibrium_distribution,
-    DensityFunction density_function,
-    LocalAverageVelocity local_average_velocity_function,
-    const int ghost_layers) {
+    DistributionFunction &equilibrium_distribution,
+    const DensityFunction &density_function,
+    const LocalAverageVelocity &local_average_velocity_function,
+    const GhostLayers &ghost_layers) {
     const int grid_width = equilibrium_distribution.extent_int(0);
     const int grid_height = equilibrium_distribution.extent_int(1);
 
@@ -186,9 +185,10 @@ void calculate_equilibrium_distribution(
 
     Kokkos::parallel_for(
         "Equilibrium Distribution Calculation",
-        Kokkos::MDRangePolicy({ghost_layers, ghost_layers, 0},
-                              {grid_width - ghost_layers,
-                               grid_height - ghost_layers, TOTAL_DIRECTIONS}),
+        Kokkos::MDRangePolicy({ghost_layers.left, ghost_layers.bottom, 0},
+                              {grid_width - ghost_layers.right,
+                               grid_height - ghost_layers.top,
+                               TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
             // This is where the fun begins
 
@@ -236,17 +236,19 @@ void calculate_equilibrium_distribution(
         });
 }
 
-void relax_distribution(DistributionFunction distribution_function,
-                        DistributionFunction equilibrium_distribution_function,
-                        const double omega, const int ghost_layers) {
+void relax_distribution(
+    DistributionFunction &distribution_function,
+    const DistributionFunction &equilibrium_distribution_function,
+    const double omega, const GhostLayers &ghost_layers) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
 
     Kokkos::parallel_for(
         "Relaxation",
-        Kokkos::MDRangePolicy({ghost_layers, ghost_layers, 0},
-                              {grid_width - ghost_layers,
-                               grid_height - ghost_layers, TOTAL_DIRECTIONS}),
+        Kokkos::MDRangePolicy({ghost_layers.left, ghost_layers.bottom, 0},
+                              {grid_width - ghost_layers.right,
+                               grid_height - ghost_layers.top,
+                               TOTAL_DIRECTIONS}),
         KOKKOS_LAMBDA(const int &x, const int &y, const int &dir) {
             const double distribution_value = distribution_function(x, y, dir);
             const double eq_distribution_value =
@@ -259,104 +261,86 @@ void relax_distribution(DistributionFunction distribution_function,
 }
 
 void streaming_step_with_bounce_back_and_lid(
-    DistributionFunction buffer_distribution_view,
-    DistributionFunction distribution_function,
-    DensityFunction density_function, const double lid_vel_x,
-    const double lid_vel_y, const int ghost_layers) {
-    if (ghost_layers < 1) {
-        std::cerr << "To perform a streaming with bounceback, there need to be "
-                     "at least 1 ghost layer."
-                  << std::endl;
-        std::exit(1);
-    }
+    DistributionFunction &buffer_distribution_view,
+    DistributionFunction &distribution_function,
+    const DensityFunction &density_function, const double lid_vel_x,
+    const double lid_vel_y, const GhostLayers &ghost_layers) {
+
+    streaming_step_with_periodic_bounds(buffer_distribution_view,
+                                        distribution_function, ghost_layers);
 
     const int lattice_width = distribution_function.extent_int(0);
     const int lattice_height = distribution_function.extent_int(1);
 
-    streaming_step_with_periodic_bounds(buffer_distribution_view,
-                                        distribution_function, 1);
-
-    // Since we moved all the values to the ghost nodes already, we make the
-    // loop range only be the inner lattice points (i.e. excluding the outer
-    // ghost layers)
     Kokkos::parallel_for(
-        "Bounce Back Vertical", Kokkos::RangePolicy(1, lattice_height - 1),
+        "Bounce Back Vertical Walls",
+        Kokkos::RangePolicy(ghost_layers.bottom,
+                            lattice_height - ghost_layers.top),
         KOKKOS_LAMBDA(const int &y) {
             // Left Wall
-            distribution_function(1, y, Direction::Right) =
-                distribution_function(0, y, Direction::Left);
-            // Diagonals
-            distribution_function(1, y, Direction::UpRight) =
-                distribution_function(0, y - 1, Direction::DownLeft);
-            distribution_function(1, y, Direction::DownRight) =
-                distribution_function(0, y + 1, Direction::UpLeft);
+            distribution_function(ghost_layers.left, y, Direction::UpRight) =
+                buffer_distribution_view(ghost_layers.left, y,
+                                         Direction::DownLeft);
+
+            distribution_function(ghost_layers.left, y, Direction::Right) =
+                buffer_distribution_view(ghost_layers.left, y, Direction::Left);
+
+            distribution_function(ghost_layers.left, y, Direction::DownRight) =
+                buffer_distribution_view(ghost_layers.left, y,
+                                         Direction::UpLeft);
 
             // Right Wall
-            distribution_function(lattice_width - 2, y, Direction::Left) =
-                distribution_function(lattice_width - 1, y, Direction::Right);
-            // Diagonals
-            distribution_function(lattice_width - 2, y, Direction::UpLeft) =
-                distribution_function(lattice_width - 1, y - 1,
-                                      Direction::DownRight);
-            distribution_function(lattice_width - 2, y, Direction::DownLeft) =
-                distribution_function(lattice_width - 1, y + 1,
-                                      Direction::UpRight);
+            distribution_function(lattice_width - ghost_layers.right - 1, y,
+                                  Direction::UpLeft) =
+                buffer_distribution_view(lattice_width - ghost_layers.right - 1,
+                                         y, Direction::DownRight);
+
+            distribution_function(lattice_width - ghost_layers.right - 1, y,
+                                  Direction::Left) =
+                buffer_distribution_view(lattice_width - ghost_layers.right - 1,
+                                         y, Direction::Right);
+
+            distribution_function(lattice_width - ghost_layers.right - 1, y,
+                                  Direction::DownLeft) =
+                buffer_distribution_view(lattice_width - ghost_layers.right - 1,
+                                         y, Direction::UpRight);
         });
 
     Kokkos::parallel_for(
-        "Bounce Back Horizontal", Kokkos::RangePolicy(1, lattice_width - 1),
+        "Bounce Back Horizontal Walls",
+        Kokkos::RangePolicy(ghost_layers.left,
+                            lattice_width - ghost_layers.right),
         KOKKOS_LAMBDA(const int &x) {
-            auto velocity_correction =
-                [&distribution_function, &lid_vel_x,
-                 &lid_vel_y](const double &local_density,
-                             const Direction direction) -> double {
-                if (lid_vel_x == 0 && lid_vel_y == 0) {
-                    return 0;
-                }
-
-                double velocity_fraction;
-                get_velocity_fraction(static_cast<Direction>(direction),
-                                      velocity_fraction);
-
-                int velocity_vector_x, velocity_vector_y;
-                get_velocity_vector(static_cast<Direction>(direction),
-                                    velocity_vector_x, velocity_vector_y);
-
-                constexpr double c1 = 2.0 / (1.0 / 3.0);
-
-                const double velocity_dot_product =
-                    Kokkos::fma(velocity_vector_x, lid_vel_x,
-                                velocity_vector_y * lid_vel_y);
-                return c1 * velocity_fraction * local_density *
-                       velocity_dot_product;
-            };
-
             // Bottom Wall
-            distribution_function(x, 1, Direction::Up) =
-                distribution_function(x, 0, Direction::Down);
-            // Diagonals
-            distribution_function(x, 1, Direction::UpRight) =
-                distribution_function(x - 1, 0, Direction::DownLeft);
-            distribution_function(x, 1, Direction::UpLeft) =
-                distribution_function(x + 1, 0, Direction::DownRight);
+            distribution_function(x, ghost_layers.bottom, Direction::UpRight) =
+                buffer_distribution_view(x, ghost_layers.bottom,
+                                         Direction::DownLeft);
 
-            const double local_density =
-                density_function(x, lattice_height - 2);
+            distribution_function(x, ghost_layers.bottom, Direction::Up) =
+                buffer_distribution_view(x, ghost_layers.bottom,
+                                         Direction::Down);
 
-            // Top Wall (Lid)
-            distribution_function(x, lattice_height - 2, Direction::Down) =
-                distribution_function(x, lattice_height - 1, Direction::Up) -
-                velocity_correction(local_density, Direction::Up);
-            // Diagonals
-            distribution_function(x, lattice_height - 2, Direction::DownLeft) =
-                distribution_function(x + 1, lattice_height - 1,
-                                      Direction::UpRight) -
-                velocity_correction(density_function(x, lattice_height - 2),
-                                    Direction::UpRight);
-            distribution_function(x, lattice_height - 2, Direction::DownRight) =
-                distribution_function(x - 1, lattice_height - 1,
-                                      Direction::UpLeft) -
-                velocity_correction(local_density, Direction::UpLeft);
+            distribution_function(x, ghost_layers.bottom, Direction::UpLeft) =
+                buffer_distribution_view(x, ghost_layers.bottom,
+                                         Direction::DownRight);
+
+            // Top Wall
+            distribution_function(x, lattice_height - ghost_layers.top - 1,
+                                  Direction::DownRight) =
+                buffer_distribution_view(x,
+                                         lattice_height - ghost_layers.top - 1,
+                                         Direction::UpLeft);
+
+            distribution_function(x, lattice_height - ghost_layers.top - 1,
+                                  Direction::Down) =
+                buffer_distribution_view(
+                    x, lattice_height - ghost_layers.top - 1, Direction::Up);
+
+            distribution_function(x, lattice_height - ghost_layers.top - 1,
+                                  Direction::DownLeft) =
+                buffer_distribution_view(x,
+                                         lattice_height - ghost_layers.top - 1,
+                                         Direction::UpRight);
         });
 }
 

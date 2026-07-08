@@ -16,6 +16,22 @@ using HostDensityMirror = DensityFunction::HostMirror;
 using LocalAverageVelocity = Kokkos::View<double **[2]>;
 using HostLocalAverageVelocityMirror = LocalAverageVelocity::HostMirror;
 
+struct GhostLayers {
+    int right, bottom, left, top;
+
+    // Default constructor sets them all to 0
+    inline GhostLayers() {
+        right = bottom = left = top = 0;
+    };
+
+    // 4 Int Constructor
+    inline GhostLayers(int right, int bottom, int left, int top)
+        : right(right),
+          bottom(bottom),
+          left(left),
+          top(top) {};
+};
+
 /**
  * Struct containing all the necessariy Kokkos::Views to represent the
  * different functions of Lattice-Boltzmann
@@ -61,51 +77,57 @@ struct Functions {
 
 void streaming_step_with_periodic_bounds(
     DistributionFunction &buffer_distribution_view,
-    DistributionFunction &distribution_function, const int ghost_layers = 0);
-inline void streaming_step_with_periodic_bounds(Functions &functions,
-                                                const int ghost_layers = 0) {
+    DistributionFunction &distribution_function,
+    const GhostLayers &ghost_layers = {});
+inline void
+streaming_step_with_periodic_bounds(Functions &functions,
+                                    const GhostLayers &ghost_layers = {}) {
     streaming_step_with_periodic_bounds(functions.buffer_distribution_function,
                                         functions.distribution_function,
                                         ghost_layers);
 }
 
-void calculate_density(DensityFunction density_function,
-                       DistributionFunction distribution_function,
-                       const int ghost_layers = 0);
-inline void calculate_density(const Functions &functions,
-                              const int ghost_layers = 0) {
+void calculate_density(DensityFunction &density_function,
+                       const DistributionFunction &distribution_function,
+                       const GhostLayers &ghost_layers = {});
+inline void calculate_density(Functions &functions,
+                              const GhostLayers &ghost_layers = {}) {
     calculate_density(functions.density_function,
                       functions.distribution_function, ghost_layers);
 }
 
 void calculate_local_average_velocity(
-    LocalAverageVelocity local_velocty_function,
-    DistributionFunction distribution_function,
-    DensityFunction density_function, const int ghost_layers = 0);
-inline void calculate_local_average_velocity(const Functions &functions,
-                                             const int ghost_layers = 0) {
+    LocalAverageVelocity &local_velocty_function,
+    const DistributionFunction &distribution_function,
+    const DensityFunction &density_function,
+    const GhostLayers &ghost_layers = {});
+inline void
+calculate_local_average_velocity(Functions &functions,
+                                 const GhostLayers &ghost_layers = {}) {
     calculate_local_average_velocity(functions.local_average_velocity,
                                      functions.distribution_function,
                                      functions.density_function);
 }
 
 void calculate_equilibrium_distribution(
-    DistributionFunction equilibrium_distribution,
-    DensityFunction density_function,
-    LocalAverageVelocity local_average_velocity_function,
-    const int ghost_layers = 0);
-inline void calculate_equilibrium_distribution(const Functions &functions,
-                                               const int ghost_layers = 0) {
+    DistributionFunction &equilibrium_distribution,
+    const DensityFunction &density_function,
+    const LocalAverageVelocity &local_average_velocity_function,
+    const GhostLayers &ghost_layers = {});
+inline void
+calculate_equilibrium_distribution(Functions &functions,
+                                   const GhostLayers &ghost_layers = {}) {
     calculate_equilibrium_distribution(functions.buffer_distribution_function,
                                        functions.density_function,
                                        functions.local_average_velocity);
 }
 
-void relax_distribution(DistributionFunction distribution_function,
-                        DistributionFunction equilibrium_distribution_function,
-                        const double omega, const int ghost_layers = 0);
-inline void relax_distribution(const Functions &functions, const double omega,
-                               const int ghost_layers = 0) {
+void relax_distribution(
+    DistributionFunction &distribution_function,
+    const DistributionFunction &equilibrium_distribution_function,
+    const double omega, const GhostLayers &ghost_layers = {});
+inline void relax_distribution(Functions &functions, const double omega,
+                               const GhostLayers &ghost_layers = {}) {
     relax_distribution(functions.distribution_function,
                        functions.buffer_distribution_function, omega,
                        ghost_layers);
@@ -122,13 +144,13 @@ inline void relax_distribution(const Functions &functions, const double omega,
  * `lid_velocity_modifiers` as all 0
  */
 void streaming_step_with_bounce_back_and_lid(
-    DistributionFunction buffer_distribution_view,
-    DistributionFunction distribution_function,
-    DensityFunction density_function, const double lid_vel_x = 0,
-    const double lid_vel_y = 0, const int ghost_layers = 1);
+    DistributionFunction &buffer_distribution_view,
+    DistributionFunction &distribution_function,
+    const DensityFunction &density_function, const double lid_vel_x = 0,
+    const double lid_vel_y = 0, const GhostLayers &ghost_layers = {});
 inline void streaming_step_with_bounce_back_and_lid(
-    const Functions &functions, const double lid_vel_x = 0,
-    const double lid_vel_y = 0, const int ghost_layers = 1) {
+    Functions &functions, const double lid_vel_x = 0,
+    const double lid_vel_y = 0, const GhostLayers ghost_layers = {}) {
     streaming_step_with_bounce_back_and_lid(
         functions.buffer_distribution_function, functions.distribution_function,
         functions.density_function, lid_vel_x, lid_vel_y, ghost_layers);
