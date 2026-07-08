@@ -5,10 +5,10 @@
 #include <lattice_boltzmann.hpp>
 #include <output_functions.hpp>
 
-#define GRID_WIDTH 20
-#define GRID_HEIGHT 20
+#define GRID_WIDTH 6
+#define GRID_HEIGHT 6
 
-#define GENERATIONS 40
+#define GENERATIONS 10
 
 void streaming() {
     DistributionFunctionOutput distribution_output{
@@ -20,7 +20,7 @@ void streaming() {
         lbm_functions.distribution_function);
 
     for (int i = 0; i < GENERATIONS; i++) {
-        Kokkos::deep_copy(lbm_functions.distribution_function,
+        Kokkos::deep_copy(lbm_functions.host_distribution_function,
                           lbm_functions.distribution_function);
 
         distribution_output.output(lbm_functions.host_distribution_function, i);

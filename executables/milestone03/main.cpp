@@ -30,11 +30,15 @@ void uniformWithHigherDensity() {
         uniform_density_with_higher_center(lbm_functions, 1.0, 1.1);
 
     for (int i = 0; i < 100; i++) {
-        distribution_output.output(lbm_functions.distribution_function, i);
+        Kokkos::deep_copy(lbm_functions.host_distribution_function,
+                          lbm_functions.distribution_function);
+        distribution_output.output(lbm_functions.host_distribution_function, i);
 
         LatticeBoltzmann::calculate_density(lbm_functions);
 
-        density_output.output(lbm_functions.density_function, i);
+        Kokkos::deep_copy(lbm_functions.host_density_function,
+                          lbm_functions.density_function);
+        density_output.output(lbm_functions.host_density_function, i);
 
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
@@ -52,23 +56,23 @@ void randomLongRun() {
         "milestone03_random_density_long_run-distribution.csv"};
     auto density_output = DensityFunctionOutput{
         "milestone03_random_density_long_run-density.csv"};
-    auto local_average_velocity_output = LocalAverageVelocityFunctionOutput{
-        "milestone03_random_density_long_run-local_average_velocity.csv"};
 
     auto lbm_functions = LatticeBoltzmann::Functions{GRID_WIDTH, GRID_HEIGHT};
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
     for (int i = 0; i < 1000; i++) {
-        distribution_output.output(lbm_functions.distribution_function, i);
+        Kokkos::deep_copy(lbm_functions.host_distribution_function,
+                          lbm_functions.distribution_function);
+        distribution_output.output(lbm_functions.host_distribution_function, i);
 
         LatticeBoltzmann::calculate_density(lbm_functions);
 
-        density_output.output(lbm_functions.density_function, i);
+        Kokkos::deep_copy(lbm_functions.host_density_function,
+                          lbm_functions.density_function);
+        density_output.output(lbm_functions.host_density_function, i);
 
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
-        local_average_velocity_output.output(
-            lbm_functions.local_average_velocity, i);
 
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
         LatticeBoltzmann::relax_distribution(lbm_functions, omega);

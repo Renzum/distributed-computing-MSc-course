@@ -33,18 +33,22 @@ class DensityFunctionOutput : IOutput {
     }
     inline DensityFunctionOutput()
         : DensityFunctionOutput("density_function_data.csv") {};
-    void output(const Kokkos::View<double **> &density, const int &iteration);
+    void output(const LatticeBoltzmann::HostDensityMirror density,
+                const int &iteration);
 };
 
-class LocalAverageVelocityFunctionOutput : IOutput {
+class LocalAverageVelocityFunctionOutput {
+  private:
+    int lattice_width;
+    int lattice_height;
+
+    std::ofstream file;
+
   public:
-    inline LocalAverageVelocityFunctionOutput(std::string file_name)
-        : IOutput(file_name) {
-        file << "iteration,x,y,velocity_x,velocity_y" << std::endl;
-    }
-    inline LocalAverageVelocityFunctionOutput()
-        : LocalAverageVelocityFunctionOutput(
-              "local_average_velocity_function_data.csv") {};
-    void output(const Kokkos::View<double ***> &local_average_velocity,
-                const int &iteration);
+    LocalAverageVelocityFunctionOutput(
+        const int lattice_width, const int lattice_height,
+        std::string file_name = "local_average_velocity_function_data.csv");
+
+    void add_timestep(const LatticeBoltzmann::HostLocalAverageVelocityMirror
+                          local_average_velocity);
 };

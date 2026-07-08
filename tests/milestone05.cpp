@@ -18,10 +18,8 @@ TEST(MILESTONE05, FIXED_WALL_BOUNCE_BACK) {
     constexpr double omega = 0.5;
 
     // For storing the distribution before the streaming step
-    Kokkos::View<double ***> previous_distribution(
-        "Previous Distribution View",
-        lbm_functions.distribution_function.extent_int(0),
-        lbm_functions.distribution_function.extent_int(1), TOTAL_DIRECTIONS);
+    auto previous_distribution =
+        Kokkos::create_mirror_view(lbm_functions.distribution_function);
 
     // Perform the Lattice Boltzmann step with boundary check 20 times and test
     // bounce back correctness each time
@@ -37,92 +35,111 @@ TEST(MILESTONE05, FIXED_WALL_BOUNCE_BACK) {
         LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(
             lbm_functions);
 
+        Kokkos::deep_copy(lbm_functions.host_distribution_function,
+                          lbm_functions.distribution_function);
+
         // Bottom Left Corner
-        ASSERT_EQ(lbm_functions.distribution_function(1, 1, Direction::UpLeft),
-                  previous_distribution(1, 1, Direction::DownRight));
-        ASSERT_EQ(lbm_functions.distribution_function(1, 1, Direction::Up),
-                  previous_distribution(1, 1, Direction::Down));
-        ASSERT_EQ(lbm_functions.distribution_function(1, 1, Direction::UpRight),
-                  previous_distribution(1, 1, Direction::DownLeft));
-        ASSERT_EQ(lbm_functions.distribution_function(1, 1, Direction::Right),
-                  previous_distribution(1, 1, Direction::Left));
         ASSERT_EQ(
-            lbm_functions.distribution_function(1, 1, Direction::DownRight),
-            previous_distribution(1, 1, Direction::UpLeft));
+            lbm_functions.host_distribution_function(1, 1, Direction::UpLeft),
+            previous_distribution(1, 1, Direction::DownRight));
+        ASSERT_EQ(lbm_functions.host_distribution_function(1, 1, Direction::Up),
+                  previous_distribution(1, 1, Direction::Down));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(1, 1, Direction::UpRight),
+            previous_distribution(1, 1, Direction::DownLeft));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(1, 1, Direction::Right),
+            previous_distribution(1, 1, Direction::Left));
+        ASSERT_EQ(lbm_functions.host_distribution_function(
+                      1, 1, Direction::DownRight),
+                  previous_distribution(1, 1, Direction::UpLeft));
 
         // Left Edge Node
-        ASSERT_EQ(lbm_functions.distribution_function(1, 5, Direction::Right),
-                  previous_distribution(1, 5, Direction::Left));
-        ASSERT_EQ(lbm_functions.distribution_function(1, 5, Direction::UpRight),
-                  previous_distribution(1, 5, Direction::DownLeft));
         ASSERT_EQ(
-            lbm_functions.distribution_function(1, 5, Direction::DownRight),
-            previous_distribution(1, 5, Direction::UpLeft));
+            lbm_functions.host_distribution_function(1, 5, Direction::Right),
+            previous_distribution(1, 5, Direction::Left));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(1, 5, Direction::UpRight),
+            previous_distribution(1, 5, Direction::DownLeft));
+        ASSERT_EQ(lbm_functions.host_distribution_function(
+                      1, 5, Direction::DownRight),
+                  previous_distribution(1, 5, Direction::UpLeft));
 
         // Upper Left Corner
-        ASSERT_EQ(lbm_functions.distribution_function(1, 18, Direction::Right),
-                  previous_distribution(1, 18, Direction::Left));
         ASSERT_EQ(
-            lbm_functions.distribution_function(1, 18, Direction::DownRight),
-            previous_distribution(1, 18, Direction::UpLeft));
-        ASSERT_EQ(lbm_functions.distribution_function(1, 18, Direction::Down),
-                  previous_distribution(1, 18, Direction::Up));
+            lbm_functions.host_distribution_function(1, 18, Direction::Right),
+            previous_distribution(1, 18, Direction::Left));
+        ASSERT_EQ(lbm_functions.host_distribution_function(
+                      1, 18, Direction::DownRight),
+                  previous_distribution(1, 18, Direction::UpLeft));
         ASSERT_EQ(
-            lbm_functions.distribution_function(1, 18, Direction::DownLeft),
-            previous_distribution(1, 18, Direction::UpRight));
+            lbm_functions.host_distribution_function(1, 18, Direction::Down),
+            previous_distribution(1, 18, Direction::Up));
+        ASSERT_EQ(lbm_functions.host_distribution_function(1, 18,
+                                                           Direction::DownLeft),
+                  previous_distribution(1, 18, Direction::UpRight));
 
         // Top Edge Node
+        ASSERT_EQ(lbm_functions.host_distribution_function(
+                      5, 18, Direction::DownRight),
+                  previous_distribution(5, 18, Direction::UpLeft));
         ASSERT_EQ(
-            lbm_functions.distribution_function(5, 18, Direction::DownRight),
-            previous_distribution(5, 18, Direction::UpLeft));
-        ASSERT_EQ(lbm_functions.distribution_function(5, 18, Direction::Down),
-                  previous_distribution(5, 18, Direction::Up));
-        ASSERT_EQ(
-            lbm_functions.distribution_function(5, 18, Direction::DownLeft),
-            previous_distribution(5, 18, Direction::UpRight));
+            lbm_functions.host_distribution_function(5, 18, Direction::Down),
+            previous_distribution(5, 18, Direction::Up));
+        ASSERT_EQ(lbm_functions.host_distribution_function(5, 18,
+                                                           Direction::DownLeft),
+                  previous_distribution(5, 18, Direction::UpRight));
 
         // Upper Right Corner
         ASSERT_EQ(
-            lbm_functions.distribution_function(18, 18, Direction::UpLeft),
+            lbm_functions.host_distribution_function(18, 18, Direction::UpLeft),
             previous_distribution(18, 18, Direction::DownRight));
-        ASSERT_EQ(lbm_functions.distribution_function(18, 18, Direction::Left),
-                  previous_distribution(18, 18, Direction::Right));
         ASSERT_EQ(
-            lbm_functions.distribution_function(18, 18, Direction::DownLeft),
-            previous_distribution(18, 18, Direction::UpRight));
-        ASSERT_EQ(lbm_functions.distribution_function(18, 18, Direction::Down),
-                  previous_distribution(18, 18, Direction::Up));
+            lbm_functions.host_distribution_function(18, 18, Direction::Left),
+            previous_distribution(18, 18, Direction::Right));
+        ASSERT_EQ(lbm_functions.host_distribution_function(18, 18,
+                                                           Direction::DownLeft),
+                  previous_distribution(18, 18, Direction::UpRight));
         ASSERT_EQ(
-            lbm_functions.distribution_function(18, 18, Direction::DownRight),
-            previous_distribution(18, 18, Direction::UpLeft));
+            lbm_functions.host_distribution_function(18, 18, Direction::Down),
+            previous_distribution(18, 18, Direction::Up));
+        ASSERT_EQ(lbm_functions.host_distribution_function(
+                      18, 18, Direction::DownRight),
+                  previous_distribution(18, 18, Direction::UpLeft));
 
         // Right Edge Node
-        ASSERT_EQ(lbm_functions.distribution_function(18, 7, Direction::UpLeft),
-                  previous_distribution(18, 7, Direction::DownRight));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(18, 7, Direction::UpLeft),
+            previous_distribution(18, 7, Direction::DownRight));
         ASSERT_EQ(lbm_functions.distribution_function(18, 7, Direction::Left),
                   previous_distribution(18, 7, Direction::Right));
-        ASSERT_EQ(
-            lbm_functions.distribution_function(18, 7, Direction::DownLeft),
-            previous_distribution(18, 7, Direction::UpRight));
+        ASSERT_EQ(lbm_functions.host_distribution_function(18, 7,
+                                                           Direction::DownLeft),
+                  previous_distribution(18, 7, Direction::UpRight));
 
         // Lower Right Corner
-        ASSERT_EQ(lbm_functions.distribution_function(18, 1, Direction::Up),
-                  previous_distribution(18, 1, Direction::Down));
-        ASSERT_EQ(lbm_functions.distribution_function(18, 1, Direction::UpLeft),
-                  previous_distribution(18, 1, Direction::DownRight));
-        ASSERT_EQ(lbm_functions.distribution_function(18, 1, Direction::Left),
-                  previous_distribution(18, 1, Direction::Right));
         ASSERT_EQ(
-            lbm_functions.distribution_function(18, 1, Direction::DownLeft),
-            previous_distribution(18, 1, Direction::UpRight));
+            lbm_functions.host_distribution_function(18, 1, Direction::Up),
+            previous_distribution(18, 1, Direction::Down));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(18, 1, Direction::UpLeft),
+            previous_distribution(18, 1, Direction::DownRight));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(18, 1, Direction::Left),
+            previous_distribution(18, 1, Direction::Right));
+        ASSERT_EQ(lbm_functions.host_distribution_function(18, 1,
+                                                           Direction::DownLeft),
+                  previous_distribution(18, 1, Direction::UpRight));
 
         // Bottom Edge Node
-        ASSERT_EQ(lbm_functions.distribution_function(4, 1, Direction::UpRight),
-                  previous_distribution(4, 1, Direction::DownLeft));
-        ASSERT_EQ(lbm_functions.distribution_function(4, 1, Direction::Up),
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(4, 1, Direction::UpRight),
+            previous_distribution(4, 1, Direction::DownLeft));
+        ASSERT_EQ(lbm_functions.host_distribution_function(4, 1, Direction::Up),
                   previous_distribution(4, 1, Direction::Down));
-        ASSERT_EQ(lbm_functions.distribution_function(4, 1, Direction::UpLeft),
-                  previous_distribution(4, 1, Direction::DownRight));
+        ASSERT_EQ(
+            lbm_functions.host_distribution_function(4, 1, Direction::UpLeft),
+            previous_distribution(4, 1, Direction::DownRight));
     }
 }
 

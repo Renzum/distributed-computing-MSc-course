@@ -34,7 +34,8 @@ void DistributionFunctionOutput::output(
 }
 
 void DensityFunctionOutput::output(
-    const Kokkos::View<double **> &density_function, const int &iteration) {
+    const LatticeBoltzmann::HostDensityMirror density_function,
+    const int &iteration) {
     const int grid_width = density_function.extent_int(0);
     const int grid_height = density_function.extent_int(1);
 
@@ -48,19 +49,28 @@ void DensityFunctionOutput::output(
     }
 }
 
-void LocalAverageVelocityFunctionOutput::output(
-    const Kokkos::View<double ***> &local_average_velocity_function,
-    const int &iteration) {
+LocalAverageVelocityFunctionOutput::LocalAverageVelocityFunctionOutput(
+    const int lattice_width, const int lattice_height, std::string file_name) {
+
+    file << "width: " << lattice_width << "\n";
+    file << "height: " << lattice_width << "\n";
+    file << "iterations:" << std::endl;
+}
+
+void LocalAverageVelocityFunctionOutput::add_timestep(
+    const LatticeBoltzmann::HostLocalAverageVelocityMirror
+        local_average_velocity_function) {
     const int grid_width = local_average_velocity_function.extent_int(0);
     const int grid_height = local_average_velocity_function.extent_int(1);
 
     for (int x = 0; x < grid_width; x++) {
         for (int y = 0; y < grid_height; y++) {
-            file << iteration << ",";
-            file << x << ",";
-            file << y << ",";
-            file << local_average_velocity_function(x, y, 0) << ",";
-            file << local_average_velocity_function(x, y, 1) << std::endl;
+            file << "  - x: " << x << "\n";
+            file << "    y: " << y << "\n";
+            file << "    vel_x: " << local_average_velocity_function(x, y, 0)
+                 << "\n";
+            file << "    vel_y: " << local_average_velocity_function(x, y, 1)
+                 << std::endl;
         }
     }
 }
