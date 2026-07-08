@@ -1,9 +1,8 @@
 #include <fstream>
 #include <string>
 
-#include <Kokkos_Core.hpp>
-
 #include <direction_definitions.hpp>
+#include <lattice_boltzmann.hpp>
 
 #include "output_functions.hpp"
 
@@ -16,7 +15,7 @@ IOutput::~IOutput() {
 }
 
 void DistributionFunctionOutput::output(
-    const Kokkos::View<double ***> &distribution_function,
+    const LatticeBoltzmann::HostDistributionMirror distribution_function,
     const int &iteration) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);

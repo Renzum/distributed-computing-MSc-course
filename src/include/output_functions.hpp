@@ -3,7 +3,7 @@
 #include <fstream>
 #include <string>
 
-#include <Kokkos_Core.hpp>
+#include <lattice_boltzmann.hpp>
 
 class IOutput {
   protected:
@@ -22,7 +22,7 @@ class DistributionFunctionOutput : IOutput {
     };
     inline DistributionFunctionOutput()
         : DistributionFunctionOutput("distribution_function_data.csv") {};
-    void output(const Kokkos::View<double ***> &distribution,
+    void output(const LatticeBoltzmann::HostDistributionMirror distribution,
                 const int &iteration);
 };
 

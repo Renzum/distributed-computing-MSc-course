@@ -23,7 +23,7 @@ void streaming() {
         Kokkos::deep_copy(lbm_functions.distribution_function,
                           lbm_functions.distribution_function);
 
-        distribution_output.output(lbm_functions.distribution_function, i);
+        distribution_output.output(lbm_functions.host_distribution_function, i);
         LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
     }
 }
