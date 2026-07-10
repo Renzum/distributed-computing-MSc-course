@@ -12,10 +12,9 @@ void streaming_step_with_periodic_bounds(
     DistributionFunction &buffer_distribution_view,
     DistributionFunction &distribution_function, const Walls &walls);
 inline void streaming_step_with_periodic_bounds(Functions &functions,
-                                                const Walls &ghost_layers) {
+                                                const Walls &walls) {
     streaming_step_with_periodic_bounds(functions.buffer_distribution_function,
-                                        functions.distribution_function,
-                                        ghost_layers);
+                                        functions.distribution_function, walls);
 }
 
 void calculate_density(DensityFunction &density_function,

@@ -17,7 +17,13 @@ TEST(MILESTONE03, DENSITY_CALCULATION) {
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    LatticeBoltzmann::calculate_density(lbm_functions);
+    LatticeBoltzmann::calculate_density(lbm_functions,
+                                        LatticeBoltzmann::Walls{
+                                            LatticeBoltzmann::Wall{},
+                                            LatticeBoltzmann::Wall{},
+                                            LatticeBoltzmann::Wall{},
+                                            LatticeBoltzmann::Wall{},
+                                        });
 
     Kokkos::deep_copy(lbm_functions.host_distribution_function,
                       lbm_functions.distribution_function);
@@ -71,13 +77,23 @@ TEST(MILESTONE03, MASS_CONSERVATION) {
 
     double expected_total_mass = calculate_total_mass();
 
+    const LatticeBoltzmann::Walls walls{
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+    };
+
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
-        LatticeBoltzmann::calculate_density(lbm_functions);
-        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
-        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
-        LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
+        LatticeBoltzmann::calculate_density(lbm_functions, walls);
+        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
+                                                           walls);
+        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
+                                                             walls);
+        LatticeBoltzmann::relax_distribution(lbm_functions, omega, walls);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions,
+                                                              walls);
 
         Kokkos::deep_copy(lbm_functions.host_distribution_function,
                           lbm_functions.distribution_function);
@@ -132,19 +148,26 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
+    const LatticeBoltzmann::Walls walls{
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+    };
+
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
-        LatticeBoltzmann::calculate_density(
-            lbm_functions.density_function,
-            lbm_functions.distribution_function);
+        LatticeBoltzmann::calculate_density(lbm_functions.density_function,
+                                            lbm_functions.distribution_function,
+                                            walls);
         LatticeBoltzmann::calculate_local_average_velocity(
             lbm_functions.local_average_velocity,
-            lbm_functions.distribution_function,
-            lbm_functions.density_function);
+            lbm_functions.distribution_function, lbm_functions.density_function,
+            walls);
         LatticeBoltzmann::calculate_equilibrium_distribution(
             lbm_functions.buffer_distribution_function,
             lbm_functions.density_function,
-            lbm_functions.local_average_velocity);
+            lbm_functions.local_average_velocity, walls);
 
         Kokkos::deep_copy(lbm_functions.host_distribution_function,
                           lbm_functions.distribution_function);
@@ -156,7 +179,7 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
         check_local_momentum();
         LatticeBoltzmann::relax_distribution(
             lbm_functions.distribution_function,
-            lbm_functions.buffer_distribution_function, omega);
+            lbm_functions.buffer_distribution_function, omega, walls);
 
         Kokkos::deep_copy(lbm_functions.host_density_function,
                           lbm_functions.density_function);
@@ -167,7 +190,7 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
         LatticeBoltzmann::streaming_step_with_periodic_bounds(
             lbm_functions.buffer_distribution_function,
-            lbm_functions.distribution_function);
+            lbm_functions.distribution_function, walls);
     }
 }
 
@@ -198,9 +221,17 @@ TEST(MILESTONE03, FIXED_POINT) {
     Kokkos::deep_copy(lbm_functions.local_average_velocity,
                       lbm_functions.host_local_average_velocity);
 
+    const LatticeBoltzmann::Walls walls{
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+    };
+
     LatticeBoltzmann::calculate_equilibrium_distribution(
         lbm_functions.buffer_distribution_function,
-        lbm_functions.density_function, lbm_functions.local_average_velocity);
+        lbm_functions.density_function, lbm_functions.local_average_velocity,
+        walls);
 
     // We copy the equilibrium distribution to the distribution function
     // This gives us f = f_eq
@@ -216,12 +247,15 @@ TEST(MILESTONE03, FIXED_POINT) {
         Kokkos::deep_copy(previous_distribution_function,
                           lbm_functions.distribution_function);
 
-        LatticeBoltzmann::calculate_density(lbm_functions);
-        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
-        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
+        LatticeBoltzmann::calculate_density(lbm_functions, walls);
+        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
+                                                           walls);
+        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
+                                                             walls);
 
-        LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
+        LatticeBoltzmann::relax_distribution(lbm_functions, omega, walls);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions,
+                                                              walls);
 
         for (int direction = 0; direction < TOTAL_DIRECTIONS; direction++) {
             for (int x = 0; x < grid_width; x++) {
@@ -256,15 +290,25 @@ TEST(MILESTONE03, BUMP_TO_UNIFORM) {
 
     const double omega = 0.5;
 
+    const LatticeBoltzmann::Walls walls{
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{},
+    };
+
     // Perform 1000 Lattice Boltzmann steps to make sure the density has enough
     // time to reach the uniform distribution
     const int iteration_limit = 1000;
     for (int i = 0; i < iteration_limit; i++) {
-        LatticeBoltzmann::calculate_density(lbm_functions);
-        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions);
-        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions);
-        LatticeBoltzmann::relax_distribution(lbm_functions, omega);
-        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
+        LatticeBoltzmann::calculate_density(lbm_functions, walls);
+        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
+                                                           walls);
+        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
+                                                             walls);
+        LatticeBoltzmann::relax_distribution(lbm_functions, omega, walls);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions,
+                                                              walls);
     }
 
     // Capture the x = 0 y = 0 density value as a reference point

@@ -7,7 +7,7 @@
 #include <lattice_boltzmann.hpp>
 
 void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
-                    const LatticeBoltzmann::GhostLayers &ghost_layers = {}) {
+                    const LatticeBoltzmann::Walls &walls) {
 
     const int grid_width = lbm_functions.distribution_function.extent_int(0);
     const int grid_height = lbm_functions.distribution_function.extent_int(1);
@@ -17,7 +17,7 @@ void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
 
     Kokkos::deep_copy(host_buffer, lbm_functions.buffer_distribution_function);
 
-    LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
+    LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions, walls);
 
     Kokkos::deep_copy(lbm_functions.host_distribution_function,
                       lbm_functions.distribution_function);
@@ -38,9 +38,10 @@ void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
         return (y == 0) ? grid_height - 1 : y - 1;
     };
 
-    for (int x = ghost_layers.left; x < grid_width - ghost_layers.right; x++) {
-        for (int y = ghost_layers.bottom; y < grid_height - ghost_layers.top;
-             y++) {
+    for (int x = walls.left.ghost_layers;
+         x < grid_width - walls.right.ghost_layers; x++) {
+        for (int y = walls.bottom.ghost_layers;
+             y < grid_height - walls.top.ghost_layers; y++) {
 
             ASSERT_EQ(host_buffer(x, y, Direction::Center),
                       lbm_functions.host_distribution_function(
@@ -58,32 +59,37 @@ void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
 }
 
 TEST(MILESTONE02, STREAMING_STEP_NO_GHOST_LAYERS) {
-    auto ghost_layers = LatticeBoltzmann::GhostLayers{};
+    using Wall = LatticeBoltzmann::Wall;
+    auto walls = LatticeBoltzmann::Walls(Wall{}, Wall{}, Wall{}, Wall{});
     auto lbm_functions = LatticeBoltzmann::Functions(20, 20);
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    streaming_test(lbm_functions);
+    streaming_test(lbm_functions, walls);
 }
 
 TEST(MILESTONE02, STREAMING_STEP_ALL_GHOST_LAYERS) {
-    auto ghost_layers = LatticeBoltzmann::GhostLayers{1, 1, 1, 1};
-    auto lbm_functions = LatticeBoltzmann::Functions(
-        20 + ghost_layers.left + ghost_layers.right,
-        20 + ghost_layers.bottom + ghost_layers.top);
+    using Wall = LatticeBoltzmann::Wall;
+    // Initialize all walls with 1 ghost layer and (by default) wall type set to
+    // Streaming
+    auto walls = LatticeBoltzmann::Walls(Wall(1), Wall(1), Wall(1), Wall(1));
+
+    auto lbm_functions = LatticeBoltzmann::Functions(20, 20);
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    streaming_test(lbm_functions);
+    streaming_test(lbm_functions, walls);
 }
 
 TEST(MILESTONE02, STREAMING_STEP_LEFT_GHOST_LAYER) {
-    auto ghost_layers = LatticeBoltzmann::GhostLayers{0, 0, 1, 0};
-    auto lbm_functions = LatticeBoltzmann::Functions(
-        20 + ghost_layers.left + ghost_layers.right,
-        20 + ghost_layers.bottom + ghost_layers.top);
+    using Wall = LatticeBoltzmann::Wall;
+    // Initialize all walls as default (no ghost layers and type set to
+    // streaming) except left wall. Left wall has 1 ghost layer and type set to
+    // streaming
+    auto walls = LatticeBoltzmann::Walls(Wall{}, Wall{}, Wall(1), Wall{});
+    auto lbm_functions = LatticeBoltzmann::Functions(20, 20);
 
     LatticeBoltzmann::DistributionInitializers::random_density(lbm_functions);
 
-    streaming_test(lbm_functions);
+    streaming_test(lbm_functions, walls);
 }
