@@ -3,6 +3,7 @@
 #include <Kokkos_Core.hpp>
 
 #include <direction_definitions.hpp>
+#include <lattice_boltzmann_types.hpp>
 
 #include "lattice_boltzmann.hpp"
 
@@ -52,31 +53,6 @@ void calculate_new_position(const int &old_x, const int &old_y,
 }
 
 } // namespace
-
-Functions::Functions(const int grid_width, const int grid_height,
-                     const int ghost_layers)
-    : ghost_layers(ghost_layers) {
-    distribution_function =
-        DistributionFunction("Distribution Function", grid_width + ghost_layers,
-                             grid_height + ghost_layers);
-    host_distribution_function =
-        Kokkos::create_mirror_view(distribution_function);
-
-    buffer_distribution_function = DistributionFunction(
-        "Buffer Distribution Function", grid_width + ghost_layers,
-        grid_height + ghost_layers);
-
-    density_function =
-        DensityFunction("Density Function", grid_width + ghost_layers,
-                        grid_height + ghost_layers);
-    host_density_function = Kokkos::create_mirror_view(density_function);
-
-    local_average_velocity = LocalAverageVelocity("Local Average Velocity",
-                                                  grid_width + ghost_layers,
-                                                  grid_height + ghost_layers);
-    host_local_average_velocity =
-        Kokkos::create_mirror_view(local_average_velocity);
-};
 
 void streaming_step_with_periodic_bounds(
     DistributionFunction &buffer_distribution_view,

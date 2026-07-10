@@ -2,6 +2,7 @@ add_library(lib STATIC
     lattice_boltzmann.cpp
     output_functions.cpp
     distribution_initializers.cpp
+    lattice_boltzmann_types.cpp
 )
 
 target_include_directories(lib PUBLIC include)

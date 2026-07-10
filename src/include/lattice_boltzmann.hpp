@@ -1,79 +1,12 @@
 #pragma once
 
 #include <direction_definitions.hpp>
+#include <lattice_boltzmann_types.hpp>
 #include <tuple>
 
 #include <Kokkos_Core.hpp>
 
 namespace LatticeBoltzmann {
-
-using DistributionFunction = Kokkos::View<double **[TOTAL_DIRECTIONS]>;
-using HostDistributionMirror = DistributionFunction::HostMirror;
-
-using DensityFunction = Kokkos::View<double **>;
-using HostDensityMirror = DensityFunction::HostMirror;
-
-using LocalAverageVelocity = Kokkos::View<double **[2]>;
-using HostLocalAverageVelocityMirror = LocalAverageVelocity::HostMirror;
-
-struct GhostLayers {
-    int right, bottom, left, top;
-
-    // Default constructor sets them all to 0
-    inline GhostLayers() {
-        right = bottom = left = top = 0;
-    };
-
-    // 4 Int Constructor
-    inline GhostLayers(int right, int bottom, int left, int top)
-        : right(right),
-          bottom(bottom),
-          left(left),
-          top(top) {};
-};
-
-/**
- * Struct containing all the necessariy Kokkos::Views to represent the
- * different functions of Lattice-Boltzmann
- */
-struct Functions {
-    const int ghost_layers;
-    /**
-     * 3D Lattice of x and y size where each cell is an array of 9 elements
-     * representing all the directions for particles
-     */
-    DistributionFunction distribution_function;
-    HostDistributionMirror host_distribution_function;
-
-    /**
-     * 3D Lattice of x and y size where each cell is an array of 9 elements
-     * representing all the directions for particles.
-     *
-     * Used as a buffer for storing temporary results.
-     */
-    DistributionFunction buffer_distribution_function;
-
-    /**
-     * 2D Lattice of x and y size where each cell represents the density of
-     * the distribution function
-     */
-    DensityFunction density_function;
-    HostDensityMirror host_density_function;
-
-    /**
-     * 3D Lattice of x and y size where each cell holds an array of size 2
-     * that represents a 2D velocity vector
-     */
-    LocalAverageVelocity local_average_velocity;
-    HostLocalAverageVelocityMirror host_local_average_velocity;
-
-    /**
-     * Allocates the necessary views with the provided lattice width and
-     * height
-     */
-    Functions(const int grid_width, const int grid_height,
-              const int ghost_layers = 0);
-};
 
 void streaming_step_with_periodic_bounds(
     DistributionFunction &buffer_distribution_view,
