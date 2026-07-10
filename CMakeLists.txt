@@ -43,6 +43,12 @@ if(NOT Kokkos_FOUND)
     FetchContent_MakeAvailable(kokkos)
 endif()
 
+FetchContent_Declare(fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG 12.2.0
+)
+FetchContent_MakeAvailable(fmt)
+
 
 enable_testing()
 
