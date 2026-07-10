@@ -55,7 +55,7 @@ void get_velocity_vector(const Direction &dir, int &x, int &y) {
         y = -1;
         break;
     };
-}
+};
 
 KOKKOS_INLINE_FUNCTION
 void get_velocity_fraction(const Direction &dir, double &fraction) {
@@ -77,3 +77,38 @@ void get_velocity_fraction(const Direction &dir, double &fraction) {
         break;
     };
 }
+
+KOKKOS_INLINE_FUNCTION Direction get_opposite_direction(const Direction &dir) {
+    switch (dir) {
+    case Direction::Center:
+        return dir;
+        break;
+    case Direction::Right:
+        return Direction::Left;
+        break;
+    case Direction::Up:
+        return Direction::Down;
+        break;
+    case Direction::Left:
+        return Direction::Right;
+        break;
+    case Direction::Down:
+        return Direction::Up;
+        break;
+    case Direction::UpRight:
+        return Direction::DownLeft;
+        break;
+    case Direction::UpLeft:
+        return Direction::DownRight;
+        break;
+    case Direction::DownLeft:
+        return Direction::UpRight;
+        break;
+    case Direction::DownRight:
+        return Direction::UpLeft;
+        break;
+    default:
+        return dir;
+        break;
+    }
+};

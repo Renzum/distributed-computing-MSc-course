@@ -17,7 +17,7 @@ using HostLocalAverageVelocityMirror = LocalAverageVelocity::HostMirror;
 
 enum WallType {
     Streaming = 0,
-    Bounceback = 1,
+    BounceBack = 1,
 };
 
 struct Wall {
@@ -26,35 +26,52 @@ struct Wall {
     double vel_x = 0;
     double vel_y = 0;
 
+    int ghost_layers = 0;
+
     inline Wall() {};
-    inline Wall(WallType wall_type, double vel_x = 0, double vel_y = 0)
+    inline Wall(int ghost_layers) : ghost_layers(ghost_layers) {};
+    inline Wall(WallType wall_type, int ghost_layers = 0, double vel_x = 0,
+                double vel_y = 0)
         : wall_type(wall_type),
           vel_x(vel_x),
-          vel_y(vel_y) {};
+          vel_y(vel_y),
+          ghost_layers(ghost_layers) {};
 };
 
-struct GhostLayers {
-    int right, bottom, left, top;
+struct Walls {
+    Wall right, bottom, left, top;
 
-    // Default constructor sets them all to 0
-    inline GhostLayers() {
-        right = bottom = left = top = 0;
-    };
+    Walls() = delete; // Delete the default constructor
 
-    // 4 Int Constructor
-    inline GhostLayers(int right, int bottom, int left, int top)
+    inline Walls(Wall right, Wall down, Wall left, Wall top)
         : right(right),
-          bottom(bottom),
+          bottom(down),
           left(left),
-          top(top) {};
+          top(top) {
+    }
 };
+
+// struct GhostLayers {
+//     int right, bottom, left, top;
+
+//     // Default constructor sets them all to 0
+//     inline GhostLayers() {
+//         right = bottom = left = top = 0;
+//     };
+
+//     // 4 Int Constructor
+//     inline GhostLayers(int right, int bottom, int left, int top)
+//         : right(right),
+//           bottom(bottom),
+//           left(left),
+//           top(top) {};
+// };
 
 /**
  * Struct containing all the necessariy Kokkos::Views to represent the
  * different functions of Lattice-Boltzmann
  */
 struct Functions {
-    const GhostLayers ghost_layers;
     /**
      * 3D Lattice of x and y size where each cell is an array of 9 elements
      * representing all the directions for particles
@@ -89,8 +106,7 @@ struct Functions {
      * height and appends any required ghost layers to the internal width and
      * height of the lattice
      */
-    Functions(const int grid_width, const int grid_height,
-              const GhostLayers ghost_layers = {});
+    Functions(const int grid_width, const int grid_height);
 };
 
 } // namespace LatticeBoltzmann
