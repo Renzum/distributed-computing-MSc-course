@@ -45,10 +45,12 @@ class LocalAverageVelocityFunctionOutput {
     std::ofstream file;
 
   public:
-    LocalAverageVelocityFunctionOutput(
-        const int lattice_width, const int lattice_height,
-        std::string file_name = "local_average_velocity_function_data.csv");
+    LocalAverageVelocityFunctionOutput(std::string file_name,
+                                       const int lattice_width,
+                                       const int lattice_height,
+                                       const LatticeBoltzmann::Walls &walls);
 
     void add_timestep(const LatticeBoltzmann::HostLocalAverageVelocityMirror
-                          local_average_velocity);
+                          local_average_velocity,
+                      const int &iteration);
 };
