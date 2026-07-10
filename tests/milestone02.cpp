@@ -43,6 +43,7 @@ void streaming_test(LatticeBoltzmann::Functions &lbm_functions,
         for (int y = walls.bottom.ghost_layers;
              y < grid_height - walls.top.ghost_layers; y++) {
 
+            // TODO: Fill the rest of the unit test
             ASSERT_EQ(host_buffer(x, y, Direction::Center),
                       lbm_functions.host_distribution_function(
                           x, y, Direction::Center));
