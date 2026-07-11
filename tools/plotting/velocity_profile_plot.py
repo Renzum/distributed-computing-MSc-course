@@ -268,7 +268,6 @@ def plot_iteration_streamplot(
     ax.set_aspect("equal")
     ax.set_xlabel("x")
     ax.set_ylabel("y")
-    ax.set_title("Velocity Streamplot")
 
     add_wall_velocity_annotations(sim, ax)
 
@@ -361,6 +360,7 @@ def plot_all_iterations_parallel(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     workers = workers or (os.cpu_count() or 1)
+    print(f"Plotting using {workers} worker(s)")
     max_in_flight = max_in_flight or workers * 2
 
     with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
