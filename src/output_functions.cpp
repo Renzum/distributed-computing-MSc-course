@@ -54,7 +54,7 @@ LocalAverageVelocityFunctionOutput::LocalAverageVelocityFunctionOutput(
     std::string file_name, const int lattice_width, const int lattice_height,
     const LatticeBoltzmann::Walls &walls) {
 
-    file = std::ofstream(file_name, std::ios::out);
+    file = std::ofstream(file_name, std::ios::out | std::ios::binary);
 
     file << "width: " << lattice_width << "\n";
     file << "height: " << lattice_width << "\n";
@@ -69,7 +69,7 @@ LocalAverageVelocityFunctionOutput::LocalAverageVelocityFunctionOutput(
     file << "left_wall_velocity_y: " << walls.left.vel_y << "\n";
 
     file << "top_wall_velocity_x: " << walls.top.vel_x << "\n";
-    file << "top_wall_velocity_y: " << walls.top.vel_y << "\n";
+    file << "top_wall_velocity_y: " << walls.top.vel_y << std::endl;
 }
 
 void LocalAverageVelocityFunctionOutput::add_timestep(
