@@ -63,7 +63,7 @@ void uniform_density_with_higher_center(
 }
 
 void uniform_at_rest(DensityFunction &density_function,
-                     LocalAverageVelocity &average_velocity,
+                     VelocityProfile &velocity_profile,
                      const double &uniform_value) {
     const int lattice_width = density_function.extent_int(0);
     const int lattice_height = density_function.extent_int(1);
@@ -73,8 +73,8 @@ void uniform_at_rest(DensityFunction &density_function,
         Kokkos::MDRangePolicy({0, 0}, {lattice_width, lattice_height}),
         KOKKOS_LAMBDA(const int &x, const int &y) {
             density_function(x, y) = uniform_value;
-            average_velocity(x, y, 0) = 0;
-            average_velocity(x, y, 1) = 0;
+            velocity_profile(x, y, 0) = 0;
+            velocity_profile(x, y, 1) = 0;
         });
 }
 

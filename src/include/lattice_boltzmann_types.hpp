@@ -7,35 +7,44 @@
 namespace LatticeBoltzmann {
 
 using DistributionFunction = Kokkos::View<double **[TOTAL_DIRECTIONS]>;
-using HostDistributionMirror = DistributionFunction::HostMirror;
+using HostDistributionFunction =
+    Kokkos::View<double **[TOTAL_DIRECTIONS], Kokkos::HostSpace>;
 
 using DensityFunction = Kokkos::View<double **>;
-using HostDensityMirror = DensityFunction::HostMirror;
+using HostDensityFunction = Kokkos::View<double **, Kokkos::HostSpace>;
 
-using LocalAverageVelocity = Kokkos::View<double **[2]>;
-using HostLocalAverageVelocityMirror = LocalAverageVelocity::HostMirror;
+using VelocityProfile = Kokkos::View<double **[2]>;
+using HostVelocityProfile = Kokkos::View<double **[2], Kokkos::HostSpace>;
 
-enum WallType {
-    Streaming = 0,
+enum BoundaryType {
+    Periodic = 0,
     BounceBack = 1,
 };
 
+/**
+ * The configuration of a wall.
+ * Defines whether it is a periodic boundary or a bounce-back.
+ * And the velocity of the wall if it is bounce-back.
+ */
 struct Wall {
-    WallType wall_type = WallType::Streaming;
+    BoundaryType boundary_type;
 
-    double vel_x = 0;
-    double vel_y = 0;
+    double vel_x;
+    double vel_y;
 
-    int ghost_layers = 0;
+    // Delete default constructor for explicit wall type declaration in code
+    Wall() = delete;
 
-    inline Wall() {};
-    inline Wall(int ghost_layers) : ghost_layers(ghost_layers) {};
-    inline Wall(WallType wall_type, int ghost_layers = 0, double vel_x = 0,
-                double vel_y = 0)
-        : wall_type(wall_type),
+    /**
+     * Constructor which returns a bounce-back wall.
+     * Set both parameters to 0 to get a fixed wall.
+     * @param vel_x x velocity component of the moving wall
+     * @param vel_y y velocity component of the moving wall
+     */
+    inline Wall(BoundaryType wall_type, double vel_x = 0, double vel_y = 0)
+        : boundary_type(wall_type),
           vel_x(vel_x),
-          vel_y(vel_y),
-          ghost_layers(ghost_layers) {};
+          vel_y(vel_y) {};
 };
 
 struct Walls {
@@ -43,70 +52,15 @@ struct Walls {
 
     Walls() = delete; // Delete the default constructor
 
+    /**
+     * Explicit constructor for defining the wall configuration.
+     */
     inline Walls(Wall right, Wall down, Wall left, Wall top)
         : right(right),
           bottom(down),
           left(left),
           top(top) {
     }
-};
-
-// struct GhostLayers {
-//     int right, bottom, left, top;
-
-//     // Default constructor sets them all to 0
-//     inline GhostLayers() {
-//         right = bottom = left = top = 0;
-//     };
-
-//     // 4 Int Constructor
-//     inline GhostLayers(int right, int bottom, int left, int top)
-//         : right(right),
-//           bottom(bottom),
-//           left(left),
-//           top(top) {};
-// };
-
-/**
- * Struct containing all the necessariy Kokkos::Views to represent the
- * different functions of Lattice-Boltzmann
- */
-struct Functions {
-    /**
-     * 3D Lattice of x and y size where each cell is an array of 9 elements
-     * representing all the directions for particles
-     */
-    DistributionFunction distribution_function;
-    HostDistributionMirror host_distribution_function;
-
-    /**
-     * 3D Lattice of x and y size where each cell is an array of 9 elements
-     * representing all the directions for particles.
-     *
-     * Used as a buffer for storing temporary results.
-     */
-    DistributionFunction buffer_distribution_function;
-
-    /**
-     * 2D Lattice of x and y size where each cell represents the density of
-     * the distribution function
-     */
-    DensityFunction density_function;
-    HostDensityMirror host_density_function;
-
-    /**
-     * 3D Lattice of x and y size where each cell holds an array of size 2
-     * that represents a 2D velocity vector
-     */
-    LocalAverageVelocity local_average_velocity;
-    HostLocalAverageVelocityMirror host_local_average_velocity;
-
-    /**
-     * Allocates the necessary views with the provided lattice width and
-     * height and appends any required ghost layers to the internal width and
-     * height of the lattice
-     */
-    Functions(const int grid_width, const int grid_height);
 };
 
 } // namespace LatticeBoltzmann

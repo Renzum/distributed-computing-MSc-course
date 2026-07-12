@@ -1,0 +1,61 @@
+#include <mpi.h>
+
+#include "mpi_layer.hpp"
+
+MPILayer::MPILayer(int domain_width, int domain_height) {
+    mpi_data = std::shared_ptr<MPIData>(new MPIData{});
+
+    this->domain_width = domain_width;
+    this->domain_height = domain_height;
+
+    // We only want ghost layers on the sides that have a neighbor which the
+    // node shalle communicate with
+    if (mpi_data->top_neighbor != MPI_PROC_NULL) {
+        ghost_layers.up = 1;
+    }
+
+    if (mpi_data->bottom_neighbor != MPI_PROC_NULL) {
+        ghost_layers.down = 1;
+    }
+
+    if (mpi_data->left_neighbor != MPI_PROC_NULL) {
+        ghost_layers.left = 1;
+    }
+
+    if (mpi_data->right_neighbor != MPI_PROC_NULL) {
+        ghost_layers.right = 1;
+    }
+
+    // MPI is row dominant, so the first dimension is the vertical position
+    // and the second dimension is the horizontal position
+    // Positive y is down, so we treat node at [0, 0] as the top left node
+    lattice_width = static_cast<int>(domain_width / mpi_data->dims[1]) +
+                    ghost_layers.left + ghost_layers.right;
+
+    // We add the remainder of the domain width / MPI column dimension size to
+    // the left most nodes on each row which allows us to use any domain size
+    // even if it is not divisible by the width of the MPI dimensions
+    if (mpi_data->coords[1] == 0) {
+        lattice_width += domain_width % mpi_data->dims[1];
+    }
+
+    lattice_height = static_cast<int>(domain_height / mpi_data->dims[0]) +
+                     ghost_layers.down + ghost_layers.up;
+
+    // We add the remainder of the domain height / MPI row dimension size to
+    // the top most nodes of each column which allows us to use any domain size
+    // even if it is not divisible by the width of the MPI dimensions
+    if (mpi_data->coords[0] == 0) {
+        lattice_height += domain_height % mpi_data->dims[0];
+    }
+
+    mpi_communication_layer = MPIImplementationFactory::get_implementation(
+        lattice_width, lattice_height, mpi_data);
+}
+void MPILayer::communicate(
+    const LatticeBoltzmann::DistributionFunction &distribution_function) {
+    mpi_communication_layer->communicate_left(distribution_function);
+    mpi_communication_layer->communicate_right(distribution_function);
+    mpi_communication_layer->communicate_down(distribution_function);
+    mpi_communication_layer->communicate_up(distribution_function);
+}
