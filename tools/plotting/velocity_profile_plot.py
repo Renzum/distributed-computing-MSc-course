@@ -436,7 +436,7 @@ def parse_args() -> argparse.Namespace:
 def main():
     args = parse_args()
 
-    with open(args.yaml_file) as f:
+    with open(args.yaml_file, mode="rb") as f:
         docs = yaml.safe_load_all(f)
         header = next(docs)
         sim = Simulation.from_yaml_doc(header)

@@ -5,7 +5,10 @@
     "dictionaries": [],
     "words": [
         "Kokkos",
-        "MLUPS"
+        "MLUPS",
+        "xlabel",
+        "xlim",
+        "ylabel"
     ],
     "ignoreWords": [],
     "import": []
