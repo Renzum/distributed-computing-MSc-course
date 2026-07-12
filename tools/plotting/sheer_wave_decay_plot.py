@@ -85,6 +85,8 @@ def main():
 
         fig, ax = plt.subplots(figsize=(6,6))
 
+        ax.set_title("Sheer Wave Decay")
+
         ax.set_xlabel("$y/L_y$")
 
         ax.set_xlim(0, height)
