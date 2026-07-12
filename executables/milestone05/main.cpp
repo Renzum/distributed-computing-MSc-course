@@ -49,23 +49,20 @@ void ms5() {
         "ms5_velocity_profile.yaml", lattice_width, lattice_height, walls);
 #endif
 
-#ifndef PRINT_INTERMEDIATE
     Kokkos::Timer timer;
-#endif
+
     const int iterations = 50000;
     for (int i = 0; i < iterations; i++) {
         if (i % 20 == 0) {
             std::cout << "Heartbeat: Iteration " << i << std::endl;
 #ifdef PRINT_INTERMEDIATE
-    Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
-	lbm_functions.local_average_velocity);
+            Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
+                              lbm_functions.local_average_velocity);
 
-    velocity_profile_output.add_timestep(
-	lbm_functions.host_local_average_velocity, i);
+            velocity_profile_output.add_timestep(
+                lbm_functions.host_local_average_velocity, i);
 #endif
-
         }
-
 
         LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
                                                              walls);
@@ -78,7 +75,7 @@ void ms5() {
         LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
                                                            walls);
     }
-#ifndef PRINT_INTERMEDIATE
+
     Kokkos::fence();
     double runtime = timer.seconds();
 
@@ -90,15 +87,13 @@ void ms5() {
         (actual_width * actual_height * iterations) / (runtime * 1e6);
 
     std::cout << "MLUPS = " << mlups << std::endl;
-#endif
-
 
     auto final_velocity_profile_output = LocalAverageVelocityFunctionOutput(
         "ms5_final_50000_iter.yaml", lattice_width, lattice_height, walls);
 
     Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
-	lbm_functions.local_average_velocity);
+                      lbm_functions.local_average_velocity);
 
     final_velocity_profile_output.add_timestep(
-	lbm_functions.host_local_average_velocity, iterations);
+        lbm_functions.host_local_average_velocity, iterations);
 }
