@@ -1,5 +1,6 @@
 #include <iostream>
 #include <utility>
+#include <vector>
 
 #include <Kokkos_Core.hpp>
 #include <mpi.h>
@@ -106,19 +107,18 @@ int main(int argc, char *argv[]) {
         LatticeBoltzmann::VelocityProfile velocity_profile(
             "Distribution Function", node.lattice_width, node.lattice_height);
 
-        Kokkos::View<double *[TOTAL_DIRECTIONS], Kokkos::HostSpace>
-            v_send_buffer("Vertical Send Buffer", node.lattice_height);
-        Kokkos::View<double *[TOTAL_DIRECTIONS], Kokkos::HostSpace>
-            v_receive_buffer("Vertical Receive Buffer", node.lattice_height);
+        Kokkos::View<double *[TOTAL_DIRECTIONS]> vertical_buffer(
+            "Vertical GPU Buffer", node.lattice_width);
 
-        Kokkos::View<double *[TOTAL_DIRECTIONS], Kokkos::HostSpace>
-            h_send_buffer("Horizontal Send Buffer", node.lattice_width);
+        auto v_send_buffer = Kokkos::create_mirror_view(vertical_buffer);
+        auto v_recv_buffer = Kokkos::create_mirror(vertical_buffer);
 
-        Kokkos::View<double *[TOTAL_DIRECTIONS], Kokkos::HostSpace>
-            h_receive_buffer("Horizontal Receive Buffer", node.lattice_width);
+        Kokkos::View<double *[TOTAL_DIRECTIONS]> horizontal_buffer(
+            "Horizontal GPU Buffer", node.lattice_height);
 
-        const int buffer_len =
-            h_send_buffer.extent_int(0) * h_send_buffer.extent_int(1);
+        auto h_send_buffer = Kokkos::create_mirror_view(horizontal_buffer);
+        auto h_recv_buffer = Kokkos::create_mirror(horizontal_buffer);
+
         MPI_Status status;
 
         std::cout << "starting iterations" << std::endl;
@@ -139,7 +139,11 @@ int main(int argc, char *argv[]) {
 
             std::cout << "Beginning communication phase" << std::endl;
 
+            int buffer_len;
+            buffer_len = node.lattice_height * TOTAL_DIRECTIONS;
+
             if (node.left != MPI_PROC_NULL && node.right != MPI_PROC_NULL) {
+
                 auto left_subview = Kokkos::subview(distribution_function, 1,
                                                     Kokkos::ALL, Kokkos::ALL);
 
@@ -148,7 +152,7 @@ int main(int argc, char *argv[]) {
                 std::cout << "Sending to " << node.left
                           << " and receiving from " << node.right << std::endl;
                 MPI_Sendrecv(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                             node.left, 0, h_receive_buffer.data(), buffer_len,
+                             node.left, 0, h_recv_buffer.data(), buffer_len,
                              MPI_DOUBLE, node.right, 0, MPI_COMM_WORLD,
                              &status);
                 std::cout << "Received from " << node.right << std::endl;
@@ -163,7 +167,7 @@ int main(int argc, char *argv[]) {
                           << " and receiving from " << node.left << std::endl;
 
                 MPI_Sendrecv(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                             node.right, 0, h_receive_buffer.data(), buffer_len,
+                             node.right, 0, h_recv_buffer.data(), buffer_len,
                              MPI_DOUBLE, node.left, 0, MPI_COMM_WORLD, &status);
 
                 std::cout << "Received from " << node.left << std::endl;
@@ -177,7 +181,7 @@ int main(int argc, char *argv[]) {
                 MPI_Send(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
                          node.left, 0, MPI_COMM_WORLD);
 
-                MPI_Recv(h_receive_buffer.data(), buffer_len, MPI_DOUBLE,
+                MPI_Recv(h_recv_buffer.data(), buffer_len, MPI_DOUBLE,
                          node.left, 0, MPI_COMM_WORLD, &status);
                 std::cout << "Received from " << node.left << std::endl;
             } else if (node.right != MPI_PROC_NULL) {
@@ -187,7 +191,7 @@ int main(int argc, char *argv[]) {
 
                 Kokkos::deep_copy(h_send_buffer, right_subview);
 
-                MPI_Recv(h_receive_buffer.data(), buffer_len, MPI_DOUBLE,
+                MPI_Recv(h_recv_buffer.data(), buffer_len, MPI_DOUBLE,
                          node.right, 0, MPI_COMM_WORLD, &status);
                 std::cout << "Received from " << node.right << std::endl;
 
