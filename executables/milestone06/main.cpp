@@ -48,11 +48,6 @@ struct Node {
         MPI_Cart_shift(cart, /* dim */ 0, /* displacement */ 1, &up, &down);
         MPI_Cart_shift(cart, /* dim */ 1, /* displacement */ 1, &left, &right);
 
-        lattice_width = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
-                        ghost_layers.left + ghost_layers.right;
-        lattice_height = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
-                         ghost_layers.down + ghost_layers.up;
-
         // Check if the neighbors wrap around
         // If yes, set the neighbor rank to MPI_PROC_NULL
         // If no, remember that this node has a ghost layer on that side
@@ -76,6 +71,11 @@ struct Node {
             ghost_layers.up = 1;
         else
             up = MPI_PROC_NULL;
+
+        lattice_width = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
+                        ghost_layers.left + ghost_layers.right;
+        lattice_height = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
+                         ghost_layers.down + ghost_layers.up;
     }
 };
 
@@ -88,6 +88,11 @@ int main(int argc, char *argv[]) {
     std::cout << "I'm node with rank " << node.rank << std::endl;
 
     {
+        LatticeBoltzmann::DistributionFunction distribution_function(
+            "Distribution Function", node.lattice_width, node.lattice_height);
+
+        LatticeBoltzmann::DensityFunction distribution_function(
+            "Distribution Function", node.lattice_width, node.lattice_height);
         // LatticeBoltzmann::DistributionFunction test("Test Function", 100,
         // 200); LatticeBoltzmann::HostDistributionMirror mirror =
         //     Kokkos::create_mirror_view(test);

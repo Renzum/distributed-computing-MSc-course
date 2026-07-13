@@ -137,15 +137,18 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
     int velocity_vector_x, velocity_vector_y;
 
-    auto check_local_momentum = [&distribution_function, &density_function,
+    auto check_local_momentum = [&host_distribution_mirror,
+                                 &host_density_function_mirror,
                                  &velocity_profile, &velocity_vector_x,
                                  &velocity_vector_y]() {
         for (int x = 0; x < grid_width; x++) {
             for (int y = 0; y < grid_height; y++) {
                 const long double expected_x =
-                    density_function(x, y) * velocity_profile(x, y, 0);
+                    host_density_function_mirror(x, y) *
+                    velocity_profile(x, y, 0);
                 const long double expected_y =
-                    density_function(x, y) * velocity_profile(x, y, 1);
+                    host_density_function_mirror(x, y) *
+                    velocity_profile(x, y, 1);
 
                 long double sum_x = 0;
                 long double sum_y = 0;
@@ -154,9 +157,9 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
                                         velocity_vector_x, velocity_vector_y);
 
                     sum_x +=
-                        distribution_function(x, y, dir) * velocity_vector_x;
+                        host_distribution_mirror(x, y, dir) * velocity_vector_x;
                     sum_y +=
-                        distribution_function(x, y, dir) * velocity_vector_y;
+                        host_distribution_mirror(x, y, dir) * velocity_vector_y;
                 }
 
                 EXPECT_NEAR(expected_x, sum_x, 1e-10 * std::abs(expected_x))

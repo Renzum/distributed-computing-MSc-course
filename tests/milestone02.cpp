@@ -22,11 +22,9 @@ TEST(MILESTONE02, STREAMING_STEP) {
     LatticeBoltzmann::DistributionInitializers::random_density(
         distribution_function);
 
-    LatticeBoltzmann::HostDistributionFunction host_mirror(
-        "Host Distribution", grid_width, grid_height);
+    auto host_mirror = Kokkos::create_mirror_view(distribution_function);
 
-    LatticeBoltzmann::HostDistributionFunction host_buffer(
-        "Host Buffer", grid_width, grid_height);
+    auto host_buffer = Kokkos::create_mirror_view(buffer_distribution);
 
     LatticeBoltzmann::streaming_step_with_periodic_bounds(
         buffer_distribution, distribution_function);
