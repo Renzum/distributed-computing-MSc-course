@@ -88,13 +88,17 @@ int main(int argc, char *argv[]) {
     std::cout << "I'm node with rank " << node.rank << std::endl;
 
     {
-        LatticeBoltzmann::DistributionFunction test("Test Function", 100, 200);
-        LatticeBoltzmann::HostDistributionMirror mirror =
-            Kokkos::create_mirror_view(test);
+        // LatticeBoltzmann::DistributionFunction test("Test Function", 100,
+        // 200); LatticeBoltzmann::HostDistributionMirror mirror =
+        //     Kokkos::create_mirror_view(test);
 
-        auto subview = Kokkos::subview(mirror, 0, Kokkos::ALL, Kokkos::ALL);
+        // auto subview = Kokkos::subview(mirror, 0, Kokkos::ALL, Kokkos::ALL);
 
-        std::cout << subview.span_is_contiguous() << std::endl;
+        // Kokkos::View<double *[9], Kokkos::HostSpace> packed("buffer",
+        //                                                     subview.extent(0));
+        // std::cout << packed.span_is_contiguous() << std::endl;
+
+        // MPI_Sendrecv(packed.data(), packed.extent(0) * 9)
     }
 
     Kokkos::finalize();

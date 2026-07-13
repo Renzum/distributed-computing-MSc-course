@@ -22,8 +22,9 @@ class DistributionFunctionOutput : IOutput {
     };
     inline DistributionFunctionOutput()
         : DistributionFunctionOutput("distribution_function_data.csv") {};
-    void output(const LatticeBoltzmann::HostDistributionMirror distribution,
-                const int &iteration);
+    void output(
+        const LatticeBoltzmann::DistributionFunction::HostMirror distribution,
+        const int &iteration);
 };
 
 class DensityFunctionOutput : IOutput {
@@ -33,7 +34,7 @@ class DensityFunctionOutput : IOutput {
     }
     inline DensityFunctionOutput()
         : DensityFunctionOutput("density_function_data.csv") {};
-    void output(const LatticeBoltzmann::HostDensityMirror density,
+    void output(const LatticeBoltzmann::DensityFunction::HostMirror density,
                 const int &iteration);
 };
 
@@ -50,7 +51,7 @@ class LocalAverageVelocityFunctionOutput {
                                        const int lattice_height,
                                        const LatticeBoltzmann::Walls &walls);
 
-    void add_timestep(const LatticeBoltzmann::HostLocalAverageVelocityMirror
+    void add_timestep(const LatticeBoltzmann::VelocityProfile::HostMirror
                           local_average_velocity,
                       const int &iteration);
 };

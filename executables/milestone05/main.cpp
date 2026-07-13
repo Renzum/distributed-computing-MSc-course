@@ -24,16 +24,16 @@ void ms5() {
     // Sliding Lid wall configuration
     const LatticeBoltzmann::Walls walls{
         LatticeBoltzmann::Wall{
-            LatticeBoltzmann::WallType::BounceBack,
+            LatticeBoltzmann::BoundaryType::BounceBack,
         }, // Right
         LatticeBoltzmann::Wall{
-            LatticeBoltzmann::WallType::BounceBack,
+            LatticeBoltzmann::BoundaryType::BounceBack,
         }, // Bottom
         LatticeBoltzmann::Wall{
-            LatticeBoltzmann::WallType::BounceBack,
+            LatticeBoltzmann::BoundaryType::BounceBack,
         }, // Left
         LatticeBoltzmann::Wall{
-            LatticeBoltzmann::WallType::BounceBack,
+            LatticeBoltzmann::BoundaryType::BounceBack,
             0,
             0.1,
             0,

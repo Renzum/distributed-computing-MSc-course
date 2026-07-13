@@ -16,7 +16,8 @@ IOutput::~IOutput() {
 }
 
 void DistributionFunctionOutput::output(
-    const LatticeBoltzmann::HostDistributionMirror distribution_function,
+    const LatticeBoltzmann::DistributionFunction::HostMirror
+        distribution_function,
     const int &iteration) {
     const int grid_width = distribution_function.extent_int(0);
     const int grid_height = distribution_function.extent_int(1);
@@ -35,7 +36,7 @@ void DistributionFunctionOutput::output(
 }
 
 void DensityFunctionOutput::output(
-    const LatticeBoltzmann::HostDensityMirror density_function,
+    const LatticeBoltzmann::DensityFunction::HostMirror density_function,
     const int &iteration) {
     const int grid_width = density_function.extent_int(0);
     const int grid_height = density_function.extent_int(1);
@@ -73,7 +74,7 @@ LocalAverageVelocityFunctionOutput::LocalAverageVelocityFunctionOutput(
 }
 
 void LocalAverageVelocityFunctionOutput::add_timestep(
-    const LatticeBoltzmann::HostLocalAverageVelocityMirror
+    const LatticeBoltzmann::VelocityProfile::HostMirror
         local_average_velocity_function,
     const int &iteration) {
     const int grid_width = local_average_velocity_function.extent_int(0);
