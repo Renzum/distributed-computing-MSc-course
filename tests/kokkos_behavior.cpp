@@ -12,7 +12,17 @@ TEST(KOKKOS_BEHAVIOR_TEST, CONTIGIOUS_MEMORY) {
     LatticeBoltzmann::DistributionInitializers::random_density(
         distribution_function);
 
-    auto host_mirror = Kokkos::create_mirror_view(distribution_function);
+    Kokkos::View<double *[9], Kokkos::HostSpace> mpi_buffer("MPI Buffer", 20);
+    ASSERT_TRUE(mpi_buffer.span_is_contiguous());
 
-    ASSERT_TRUE(host_mirror.span_is_contiguous());
+    auto distribution_subview =
+        Kokkos::subview(distribution_function, 0, Kokkos::ALL, Kokkos::ALL);
+
+    Kokkos::deep_copy(mpi_buffer, distribution_subview);
+
+    for (int y = 0; y < 20; y++) {
+        for (int dir = 0; dir < 9; dir++) {
+            mpi_buffer(y, dir) = y;
+        }
+    }
 }
