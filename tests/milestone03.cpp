@@ -139,16 +139,16 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
 
     auto check_local_momentum = [&host_distribution_mirror,
                                  &host_density_function_mirror,
-                                 &velocity_profile, &velocity_vector_x,
-                                 &velocity_vector_y]() {
+                                 &host_velocity_profile_mirror,
+                                 &velocity_vector_x, &velocity_vector_y]() {
         for (int x = 0; x < grid_width; x++) {
             for (int y = 0; y < grid_height; y++) {
                 const long double expected_x =
                     host_density_function_mirror(x, y) *
-                    velocity_profile(x, y, 0);
+                    host_velocity_profile_mirror(x, y, 0);
                 const long double expected_y =
                     host_density_function_mirror(x, y) *
-                    velocity_profile(x, y, 1);
+                    host_velocity_profile_mirror(x, y, 1);
 
                 long double sum_x = 0;
                 long double sum_y = 0;
