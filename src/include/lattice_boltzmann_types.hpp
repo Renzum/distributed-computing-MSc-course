@@ -27,15 +27,13 @@ enum BoundaryType {
  * And the velocity of the wall if it is bounce-back.
  */
 struct Wall {
-    BoundaryType boundary_type = BoundaryType::Periodic;
+    BoundaryType boundary_type;
 
-    double vel_x = 0;
-    double vel_y = 0;
+    double vel_x;
+    double vel_y;
 
-    /**
-     * Default constructor returns a periodic-boundary wall.
-     */
-    inline Wall() {};
+    // Delete default constructor for explicit wall type declaration in code
+    Wall() = delete;
 
     /**
      * Constructor which returns a bounce-back wall.
@@ -43,8 +41,8 @@ struct Wall {
      * @param vel_x x velocity component of the moving wall
      * @param vel_y y velocity component of the moving wall
      */
-    inline Wall(double vel_x, double vel_y)
-        : boundary_type(BoundaryType::BounceBack),
+    inline Wall(BoundaryType wall_type, double vel_x = 0, double vel_y = 0)
+        : boundary_type(wall_type),
           vel_x(vel_x),
           vel_y(vel_y) {};
 };

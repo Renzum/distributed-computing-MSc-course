@@ -9,11 +9,13 @@
 #include <direction_definitions.hpp>
 #include <distribution_initializers.hpp>
 #include <lattice_boltzmann.hpp>
+#include <output_functions.hpp>
 
-#define GLOBAL_DOMAIN_SIZE 300
+#define GLOBAL_DOMAIN_SIZE 600
 
 class Node {
   private:
+  public:
     struct GhostLayers {
         int left = 0, right = 0, down = 0, up = 0;
     };
@@ -44,7 +46,6 @@ class Node {
     SendRecvBuffer up_down_recv_buffer;
     int up_down_buffer_len;
 
-  public:
     int lattice_width, lattice_height;
 
     int rank, mpi_domain_size;
@@ -65,6 +66,13 @@ class Node {
         MPI_Comm_rank(cart, &rank);
         MPI_Cart_coords(cart, rank, 2, coords);
 
+        std::cout << fmt::format("{:d}: Dimensions: [{:d}, {:d}]", rank,
+                                 dims[0], dims[1])
+                  << std::endl;
+        std::cout << fmt::format("{:d}: Coordinates: [{:d}, {:d}]", rank,
+                                 coords[0], coords[1])
+                  << std::endl;
+
         // The four neighbors; with periodic boundaries every rank has all four
         MPI_Cart_shift(cart, /* dim */ 0, /* displacement */ 1, &up, &down);
         MPI_Cart_shift(cart, /* dim */ 1, /* displacement */ 1, &left, &right);
@@ -72,32 +80,43 @@ class Node {
         // Check if the neighbors wrap around
         // If yes, set the neighbor rank to MPI_PROC_NULL
         // If no, remember that this node has a ghost layer on that side
+        std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
+                  << std::endl;
+        std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
+                  << std::endl;
+        std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
+                  << std::endl;
+        std::cout << fmt::format("{:d}: My up is {:d}", rank, up) << std::endl;
 
-        if (left < rank)
-            ghost_layers.left = 1;
-        else
+        if (coords[0] == 0) {
             left = MPI_PROC_NULL;
+        } else {
+            ghost_layers.left = 1;
+        }
 
-        if (right > rank)
-            ghost_layers.right = 1;
-        else
+        if (coords[0] == dims[0] - 1) {
             right = MPI_PROC_NULL;
+        } else {
+            ghost_layers.right = 1;
+        }
 
-        if (down < rank)
-            ghost_layers.down = 1;
-        else
+        if (coords[1] == 0) {
             down = MPI_PROC_NULL;
+        } else {
+            ghost_layers.down = 1;
+        }
 
-        if (up > rank)
-            ghost_layers.up = 1;
-        else
+        if (coords[1] == dims[1] - 1) {
             up = MPI_PROC_NULL;
+        } else {
+            ghost_layers.up = 1;
+        }
 
-        lattice_width = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
-                        ghost_layers.left + ghost_layers.right;
+        lattice_width = GLOBAL_DOMAIN_SIZE / dims[0] + ghost_layers.left +
+                        ghost_layers.right;
 
-        lattice_height = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
-                         ghost_layers.down + ghost_layers.up;
+        lattice_height =
+            GLOBAL_DOMAIN_SIZE / dims[1] + ghost_layers.down + ghost_layers.up;
 
         left_right_gpu_buffer =
             GPUBuffer("Horzintal GPU Buffer", lattice_height);
@@ -210,7 +229,7 @@ class Node {
         MPI_Status status;
 
         if (up != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Sending up to {:d}", rank, down)
+            std::cout << fmt::format("{:d}: Sending up to {:d}", rank, up)
                       << std::endl;
             auto up_subview =
                 Kokkos::subview(distribution_function, Kokkos::ALL,
@@ -259,42 +278,93 @@ int main(int argc, char *argv[]) {
     {
         Node node{};
 
-        std::cout << "I'm node with rank " << node.rank << std::endl;
+        std::cout << fmt::format(
+                         "I'm node with rank {:d} and dimensions {:d}x{:d}",
+                         node.rank, node.lattice_width, node.lattice_height)
+                  << std::endl;
 
         const double omega = 1.2;
-        const int iterations = 1;
+        const int iterations = 0;
 
-        {
-            LatticeBoltzmann::DistributionFunction distribution_function(
-                "Distribution Function", node.lattice_width,
-                node.lattice_height);
+        const double lid_vel_x = 0.1, lid_vel_y = 0.0;
 
-            LatticeBoltzmann::DistributionInitializers::random_density(
-                distribution_function);
-            LatticeBoltzmann::DistributionFunction buffer_distribution(
-                "Buffer Distribution Function", node.lattice_width,
-                node.lattice_height);
-            LatticeBoltzmann::DensityFunction density_function(
-                "Distribution Function", node.lattice_width,
-                node.lattice_height);
-            LatticeBoltzmann::VelocityProfile velocity_profile(
-                "Distribution Function", node.lattice_width,
-                node.lattice_height);
+        LatticeBoltzmann::Walls walls{
+                // If there is no right neighbor, the right wall is a
+                // bounce-back
+                (node.right != MPI_PROC_NULL)
+                    ? LatticeBoltzmann::Wall{ 
+                          LatticeBoltzmann::BoundaryType::Periodic, }
+                    : LatticeBoltzmann::Wall{ 
+                          LatticeBoltzmann::BoundaryType::BounceBack, 0, 0, },
+                // If there is no down neighbor, the bottom wall is a
+                // bounce-back
+                (node.down != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic,}
+                                             : LatticeBoltzmann::Wall{ LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
+                // If there is no left neighbor, the left wall is a
+                // bounce-back (otherwise periodic)
+                (node.left != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
+                                             : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
+                // If there is no up neighbor, the top wall is a
+                // moving lid (otherwise periodic)
+                (node.up != MPI_PROC_NULL)
+                    ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
+                    : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, lid_vel_x, lid_vel_y ,},
+            };
 
-            // Kokkos::View<double *[TOTAL_DIRECTIONS]> vertical_buffer(
-            //     "Vertical GPU Buffer", node.lattice_width);
+        LatticeBoltzmann::DistributionFunction distribution_function(
+            "Distribution Function", node.lattice_width, node.lattice_height);
 
-            // Kokkos::View<double *[TOTAL_DIRECTIONS]> horizontal_buffer(
-            //     "Horizontal GPU Buffer", node.lattice_height);
+        LatticeBoltzmann::DistributionInitializers::random_density(
+            distribution_function);
+        LatticeBoltzmann::DistributionFunction buffer_distribution(
+            "Buffer Distribution Function", node.lattice_width,
+            node.lattice_height);
+        LatticeBoltzmann::DensityFunction density_function(
+            "Distribution Function", node.lattice_width, node.lattice_height);
+        LatticeBoltzmann::VelocityProfile velocity_profile(
+            "Distribution Function", node.lattice_width, node.lattice_height);
 
-            // MPI_Status status;
+        std::cout << "starting iterations" << std::endl;
+        for (int i = 0; i < iterations; i++) {
+            LatticeBoltzmann::calculate_density(density_function,
+                                                distribution_function);
+            LatticeBoltzmann::calculate_local_average_velocity(
+                velocity_profile, distribution_function, density_function);
+            LatticeBoltzmann::calculate_equilibrium_distribution(
+                buffer_distribution, density_function, velocity_profile);
+            LatticeBoltzmann::relax_distribution(distribution_function,
+                                                 buffer_distribution, omega);
 
-            std::cout << "starting iterations" << std::endl;
-            for (int i = 0; i < iterations; i++) {
-                Kokkos::fence();
-                node.communicate_all(distribution_function);
-            }
+            Kokkos::fence();
+
+            node.communicate_all(distribution_function);
+
+            LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(
+                buffer_distribution, distribution_function, density_function,
+                walls);
         }
+
+        // // Make a view which excludes the ghost layers of the velocity
+        // profile
+        // // view
+        // // TODO: Optimize. Only distribution function view needs ghost
+        // layers. auto effective_velocity_profile = Kokkos::subview(
+        //     velocity_profile,
+        //     std::make_pair(node.left, node.lattice_width - node.right),
+        //     std::make_pair(node.down, node.lattice_height - node.up),
+        //     Kokkos::ALL);
+        // auto velocity_profile_mirror =
+        //     Kokkos::create_mirror_view(effective_velocity_profile);
+
+        // Kokkos::View<double *[2], Kokkos::HostSpace> receive_buffer;
+
+        // Kokkos::deep_copy(velocity_profile_mirror,
+        // effective_velocity_profile);
+
+        // if (node.rank == 0) {
+        //     receive = LatticeBoltzmann::VelocityProfile("Receive Buffer")
+        //         MPI_Gather(velocity_profile_mirror.data(), );
+        // }
     }
 
     Kokkos::finalize();
