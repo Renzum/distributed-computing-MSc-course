@@ -3,9 +3,8 @@
 #include <vector>
 
 #include <Kokkos_Core.hpp>
+#include <fmt/format.h>
 #include <mpi.h>
-
-// #include <fmt/format.h>
 
 #include <direction_definitions.hpp>
 #include <distribution_initializers.hpp>
@@ -13,24 +12,42 @@
 
 #define GLOBAL_DOMAIN_SIZE 300
 
-struct GhostLayers {
-    int left = 0, right = 0, down = 0, up = 0;
-};
+class Node {
+  private:
+    struct GhostLayers {
+        int left = 0, right = 0, down = 0, up = 0;
+    };
 
-struct Node {
     GhostLayers ghost_layers{};
 
     MPI_Comm cart{};
 
-    int mpi_domain_size;
     int dims[2] = {0, 0};
     int periods[2] = {1, 1};
 
-    int rank, coords[2];
+    int coords[2];
 
     int up, down, left, right;
 
+    // Buffers for moving slices from GPU to CPU and vice versa
+    using GPUBuffer = Kokkos::View<double *[TOTAL_DIRECTIONS]>;
+    GPUBuffer left_right_gpu_buffer;
+    // GPUBuffer up_down_gpu_buffer;
+
+    // CPU Space Buffers for contagious data sending via MPI
+    using SendRecvBuffer = GPUBuffer::HostMirror;
+    SendRecvBuffer left_right_send_buffer;
+    SendRecvBuffer left_right_recv_buffer;
+    int left_right_buffer_len;
+
+    // SendRecvBuffer up_down_send_buffer;
+    // SendRecvBuffer up_down_recv_buffer;
+    // int h_buffer_len;
+
+  public:
     int lattice_width, lattice_height;
+
+    int rank, mpi_domain_size;
 
     Node() {
         // The following code snippets were taken from the Domain Decomposition
@@ -78,8 +95,53 @@ struct Node {
 
         lattice_width = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
                         ghost_layers.left + ghost_layers.right;
+
         lattice_height = GLOBAL_DOMAIN_SIZE / mpi_domain_size +
                          ghost_layers.down + ghost_layers.up;
+
+        left_right_gpu_buffer = Kokkos::View<double *[TOTAL_DIRECTIONS]>(
+            "Horzintal GPU Buffer", lattice_height);
+
+        left_right_send_buffer =
+            Kokkos::create_mirror_view(left_right_gpu_buffer);
+        left_right_recv_buffer = Kokkos::create_mirror(left_right_gpu_buffer);
+        left_right_buffer_len = lattice_height * TOTAL_DIRECTIONS;
+
+        // up_down_gpu_buffer("Vertical GPU Buffer", lattice_width);
+        // up_down_send_buffer = Kokkos::create_mirror_view(up_down_gpu_buffer);
+        // up_down_recv_buffer = Kokkos::create_mirror(up_down_recv_buffer);
+        // h_buffer_len = lattice_height * TOTAL_DIRECTIONS;
+    }
+
+    void
+    communicate(LatticeBoltzmann::DistributionFunction &distribution_function) {
+        MPI_Status status;
+        if (left != MPI_PROC_NULL) {
+            std::cout << fmt::format("{:d}: Sending left to {:d}", rank, left)
+                      << std::endl;
+            auto left_subview = Kokkos::subview(distribution_function, 1,
+                                                Kokkos::ALL, Kokkos::ALL);
+            Kokkos::deep_copy(left_right_gpu_buffer, left_subview);
+            Kokkos::deep_copy(left_right_send_buffer, left_right_gpu_buffer);
+        }
+
+        MPI_Sendrecv(left_right_send_buffer.data(), left_right_buffer_len,
+                     MPI_DOUBLE, left, 0, left_right_recv_buffer.data(),
+                     left_right_buffer_len, MPI_DOUBLE, right, 0, cart,
+                     &status);
+
+        if (right != MPI_PROC_NULL) {
+            std::cout << fmt::format("{:d}: Receiving right from {:d}", rank,
+                                     right)
+                      << std::endl;
+
+            auto right_subview =
+                Kokkos::subview(distribution_function, lattice_width - 1,
+                                Kokkos::ALL, Kokkos::ALL);
+
+            Kokkos::deep_copy(left_right_gpu_buffer, left_right_recv_buffer);
+            Kokkos::deep_copy(right_subview, left_right_gpu_buffer);
+        }
     }
 };
 
@@ -87,110 +149,43 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     Kokkos::initialize(argc, argv);
 
-    Node node{};
-
-    std::cout << "I'm node with rank " << node.rank << std::endl;
-
-    const double omega = 1.2;
-    const int iterations = 10;
-
     {
-        LatticeBoltzmann::DistributionFunction distribution_function(
-            "Distribution Function", node.lattice_width, node.lattice_height);
-        LatticeBoltzmann::DistributionInitializers::random_density(
-            distribution_function);
-        LatticeBoltzmann::DistributionFunction buffer_distribution(
-            "Buffer Distribution Function", node.lattice_width,
-            node.lattice_height);
-        LatticeBoltzmann::DensityFunction density_function(
-            "Distribution Function", node.lattice_width, node.lattice_height);
-        LatticeBoltzmann::VelocityProfile velocity_profile(
-            "Distribution Function", node.lattice_width, node.lattice_height);
+        Node node{};
 
-        Kokkos::View<double *[TOTAL_DIRECTIONS]> vertical_buffer(
-            "Vertical GPU Buffer", node.lattice_width);
+        std::cout << "I'm node with rank " << node.rank << std::endl;
 
-        auto v_send_buffer = Kokkos::create_mirror_view(vertical_buffer);
-        auto v_recv_buffer = Kokkos::create_mirror(vertical_buffer);
+        const double omega = 1.2;
+        const int iterations = 1;
 
-        Kokkos::View<double *[TOTAL_DIRECTIONS]> horizontal_buffer(
-            "Horizontal GPU Buffer", node.lattice_height);
+        {
+            LatticeBoltzmann::DistributionFunction distribution_function(
+                "Distribution Function", node.lattice_width,
+                node.lattice_height);
 
-        auto h_send_buffer = Kokkos::create_mirror_view(horizontal_buffer);
-        auto h_recv_buffer = Kokkos::create_mirror(horizontal_buffer);
+            LatticeBoltzmann::DistributionInitializers::random_density(
+                distribution_function);
+            LatticeBoltzmann::DistributionFunction buffer_distribution(
+                "Buffer Distribution Function", node.lattice_width,
+                node.lattice_height);
+            LatticeBoltzmann::DensityFunction density_function(
+                "Distribution Function", node.lattice_width,
+                node.lattice_height);
+            LatticeBoltzmann::VelocityProfile velocity_profile(
+                "Distribution Function", node.lattice_width,
+                node.lattice_height);
 
-        MPI_Status status;
+            // Kokkos::View<double *[TOTAL_DIRECTIONS]> vertical_buffer(
+            //     "Vertical GPU Buffer", node.lattice_width);
 
-        std::cout << "starting iterations" << std::endl;
-        for (int i = 0; i < iterations; i++) {
-	std::cout << "Beginning communication phase" << std::endl;
+            // Kokkos::View<double *[TOTAL_DIRECTIONS]> horizontal_buffer(
+            //     "Horizontal GPU Buffer", node.lattice_height);
 
-	int buffer_len;
-	buffer_len = node.lattice_height * TOTAL_DIRECTIONS;
+            // MPI_Status status;
 
-            if (node.left != MPI_PROC_NULL && node.right != MPI_PROC_NULL) {
-
-
-                auto left_subview = Kokkos::subview(distribution_function, 1, Kokkos::ALL, Kokkos::ALL);
-
-                Kokkos::deep_copy(horizontal_buffer, left_subview);
-                Kokkos::deep_copy(h_send_buffer, horizontal_buffer);
-
-                std::cout << "Sending to " << node.left
-                          << " and receiving from " << node.right << std::endl;
-                MPI_Sendrecv(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                             node.left, 0, h_recv_buffer.data(), buffer_len,
-                             MPI_DOUBLE, node.right, 0, MPI_COMM_WORLD,
-                             &status);
-                std::cout << "Received from " << node.right << std::endl;
-
-                auto right_subview = Kokkos::subview(distribution_function,
-                                                     node.lattice_width - 2,
-                                                     Kokkos::ALL, Kokkos::ALL);
-
-                Kokkos::deep_copy(horizontal_buffer, right_subview);
-                Kokkos::deep_copy(h_send_buffer, horizontal_buffer);
-
-                std::cout << "Sending to " << node.right
-                          << " and receiving from " << node.left << std::endl;
-
-                MPI_Sendrecv(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                             node.right, 0, h_recv_buffer.data(), buffer_len,
-                             MPI_DOUBLE, node.left, 0, MPI_COMM_WORLD, &status);
-
-                std::cout << "Received from " << node.left << std::endl;
-            } else if (node.left != MPI_PROC_NULL) {
-                auto left_subview = Kokkos::subview(distribution_function, 1,
-                                                    Kokkos::ALL, Kokkos::ALL);
-
-                Kokkos::deep_copy(horizontal_buffer, left_subview);
-                Kokkos::deep_copy(h_send_buffer, horizontal_buffer);
-
-                std::cout << "Sending to " << node.left;
-                MPI_Send(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                         node.left, 0, MPI_COMM_WORLD);
-
-                MPI_Recv(h_recv_buffer.data(), buffer_len, MPI_DOUBLE,
-                         node.left, 0, MPI_COMM_WORLD, &status);
-                std::cout << "Received from " << node.left << std::endl;
-            } else if (node.right != MPI_PROC_NULL) {
-                auto right_subview = Kokkos::subview(distribution_function,
-                                                     node.lattice_width - 2,
-                                                     Kokkos::ALL, Kokkos::ALL);
-
-                Kokkos::deep_copy(horizontal_buffer, right_subview);
-                Kokkos::deep_copy(h_send_buffer, horizontal_buffer);
-
-                MPI_Recv(h_recv_buffer.data(), buffer_len, MPI_DOUBLE,
-                         node.right, 0, MPI_COMM_WORLD, &status);
-                std::cout << "Received from " << node.right << std::endl;
-
-                std::cout << "Sending to " << node.right;
-                MPI_Send(h_send_buffer.data(), buffer_len, MPI_DOUBLE,
-                         node.right, 0, MPI_COMM_WORLD);
-
-            } else {
-                std::cout << "There are no neighbors to send." << std::endl;
+            std::cout << "starting iterations" << std::endl;
+            for (int i = 0; i < iterations; i++) {
+                Kokkos::fence();
+                node.communicate(distribution_function);
             }
         }
     }
