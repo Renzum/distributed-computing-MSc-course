@@ -23,32 +23,32 @@ void ms5() {
 
     // Sliding Lid wall configuration
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall{
-            LatticeBoltzmann::BoundaryType::BounceBack,
-        }, // Right
-        LatticeBoltzmann::Wall{
-            LatticeBoltzmann::BoundaryType::BounceBack,
-        }, // Bottom
-        LatticeBoltzmann::Wall{
-            LatticeBoltzmann::BoundaryType::BounceBack,
-        }, // Left
-        LatticeBoltzmann::Wall{
-            LatticeBoltzmann::BoundaryType::BounceBack,
-            0,
-            0.1,
-            0,
-        }, // Top
+        LatticeBoltzmann::Wall{0, 0},   // Right
+        LatticeBoltzmann::Wall{0, 0},   // Bottom
+        LatticeBoltzmann::Wall{0, 0},   // Left
+        LatticeBoltzmann::Wall{0.1, 0}, // Top
     };
 
     constexpr double omega = 1.7;
 
-    auto lbm_functions =
-        LatticeBoltzmann::Functions(lattice_size, lattice_size);
+    LatticeBoltzmann::DistributionFunction distribution_function(
+        "Distribution Function", lattice_size, lattice_size);
+    LatticeBoltzmann::DistributionFunction buffer_distribution_function(
+        "Buffer Distribution Function", lattice_size, lattice_size);
 
-    LatticeBoltzmann::HostLocalAverageVelocityMirror previous_velocity_profile =
-        Kokkos::create_mirror_view(lbm_functions.local_average_velocity);
+    LatticeBoltzmann::DensityFunction density_function(
+        "Density Function", lattice_size, lattice_size);
 
-    LatticeBoltzmann::DistributionInitializers::uniform_at_rest(lbm_functions);
+    LatticeBoltzmann::VelocityProfile velocity_profile(
+        "Velocity Profile", lattice_size, lattice_size);
+
+    LatticeBoltzmann::VelocityProfile::HostMirror host_velocity_profile =
+        Kokkos::create_mirror_view(velocity_profile);
+
+    Kokkos::deep_copy(host_velocity_profile, velocity_profile);
+
+    LatticeBoltzmann::DistributionInitializers::uniform_at_rest(
+        density_function, velocity_profile);
 
     auto velocity_profile_output = LocalAverageVelocityFunctionOutput(
         "ms5_velocity_profile.yaml", lattice_size, lattice_size, walls);
@@ -59,49 +59,41 @@ void ms5() {
     for (int i = 0; i < iterations; i++) {
         if (i % 20 == 0) {
             std::cout << "Heartbeat: Iteration " << i << std::endl;
-            Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
-                              lbm_functions.local_average_velocity);
 
-            velocity_profile_output.add_timestep(
-                lbm_functions.host_local_average_velocity, i);
+            velocity_profile_output.add_timestep(host_velocity_profile, i);
         }
 
-        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
-                                                             walls);
-        LatticeBoltzmann::relax_distribution(lbm_functions, omega, walls);
+        LatticeBoltzmann::calculate_equilibrium_distribution(
+            buffer_distribution_function, density_function, velocity_profile);
+        LatticeBoltzmann::relax_distribution(
+            distribution_function, buffer_distribution_function, omega);
 
-        LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(lbm_functions,
-                                                                  walls);
+        LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(
+            buffer_distribution_function, distribution_function,
+            density_function, walls);
 
-        LatticeBoltzmann::calculate_density(lbm_functions, walls);
+        LatticeBoltzmann::calculate_density(density_function,
+                                            distribution_function);
 
-        Kokkos::deep_copy(previous_velocity_profile,
-                          lbm_functions.local_average_velocity);
+        LatticeBoltzmann::calculate_local_average_velocity(
+            velocity_profile, distribution_function, density_function);
 
-        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
-                                                           walls);
+        Kokkos::deep_copy(host_velocity_profile, velocity_profile);
     }
 
     Kokkos::fence();
     double runtime = timer.seconds();
 
-    // Actual width excludes the ghost nodes since none of the steps iterate
-    // over them
-    int actual_width =
-        lattice_size - walls.left.ghost_layers - walls.right.ghost_layers;
-    int actual_height =
-        lattice_size - walls.bottom.ghost_layers - walls.top.ghost_layers;
-
     // MLUPS = (N_x + N_y + time_steps) / runtime * 1000000
     double mlups =
-        (actual_width * actual_height * iterations) / (runtime * 1000000);
+        (lattice_size * lattice_size * iterations) / (runtime * 1000000);
 
     const double viscosity = (1.0 / 3.0) * ((1.0 / omega) - 0.5);
     std::cout << "Visc:" << viscosity << std::endl;
 
     std::cout << fmt::format(
                      "Lattice Dimensions (excluding ghost layers): {:d}x{:d}\n",
-                     actual_width, actual_height)
+                     lattice_size, lattice_size)
               << "Total Iterations Completed: " << iterations << "\n"
               << fmt::format("Total Simulation Runtime: {:f} seconds\n",
                              runtime)
@@ -109,15 +101,11 @@ void ms5() {
                              "(Runtime Seconds * 1000000) = {:f}\n",
                              mlups)
               << fmt::format("Reynolds Number = {:f}",
-                             walls.top.vel_x * actual_width / viscosity)
+                             walls.top.vel_x * lattice_size / viscosity)
               << std::endl;
 
     auto final_velocity_profile_output = LocalAverageVelocityFunctionOutput(
         "ms5_final_50000_iter.yaml", lattice_size, lattice_size, walls);
 
-    Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
-                      lbm_functions.local_average_velocity);
-
-    final_velocity_profile_output.add_timestep(
-        lbm_functions.host_local_average_velocity, iterations);
+    final_velocity_profile_output.add_timestep(velocity_profile, iterations);
 }
