@@ -11,7 +11,7 @@
 #include <lattice_boltzmann.hpp>
 #include <output_functions.hpp>
 
-#define GLOBAL_DOMAIN_SIZE 600
+#define GLOBAL_DOMAIN_SIZE 32000
 
 class Node {
   private:
@@ -25,7 +25,7 @@ class Node {
     MPI_Comm cart{};
 
     int dims[2] = {0, 0};
-    int periods[2] = {1, 1};
+    int periods[2] = {0, 0};
 
     int coords[2];
 
@@ -85,36 +85,28 @@ class Node {
         // and the second dimension is the horizontal position
         // Positive y is down, so we treat node at [0, 0] as the top left node
 
-        if (coords[0] == 0) {
-            up = MPI_PROC_NULL;
-        } else {
-            std::cout << fmt::format("{:d}: My up is {:d}", rank, up)
-                      << std::endl;
+	        std::cout << fmt::format("{:d}: My up is {:d}", rank, up) << std::endl;
+        std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
+                  << std::endl;
+        std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
+                  << std::endl;
+        std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
+                  << std::endl;
+
+        if (up == MPI_PROC_NULL) {
+            ghost_layers.up = 1;
+        }
+
+        if (down == MPI_PROC_NULL) {
+            ghost_layers.down = 1;
+        }
+
+        if (left == MPI_PROC_NULL) {
             ghost_layers.left = 1;
         }
 
-        if (coords[0] == dims[0] - 1) {
-            down = MPI_PROC_NULL;
-        } else {
-            std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
-                      << std::endl;
+        if (right == MPI_PROC_NULL) {
             ghost_layers.right = 1;
-        }
-
-        if (coords[1] == 0) {
-            left = MPI_PROC_NULL;
-        } else {
-            ghost_layers.down = 1;
-            std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
-                      << std::endl;
-        }
-
-        if (coords[1] == dims[1] - 1) {
-            right = MPI_PROC_NULL;
-        } else {
-            std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
-                      << std::endl;
-            ghost_layers.up = 1;
         }
 
         lattice_width = GLOBAL_DOMAIN_SIZE / dims[0] + ghost_layers.left +
@@ -142,8 +134,6 @@ class Node {
         LatticeBoltzmann::DistributionFunction &distribution_function) {
         MPI_Status status;
         if (left != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Sending left to {:d}", rank, left)
-                      << std::endl;
             auto left_subview = Kokkos::subview(distribution_function, 1,
                                                 Kokkos::ALL, Kokkos::ALL);
             Kokkos::deep_copy(left_right_gpu_buffer, left_subview);
@@ -156,9 +146,6 @@ class Node {
                      &status);
 
         if (right != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Receiving right from {:d}", rank,
-                                     right)
-                      << std::endl;
 
             auto right_subview =
                 Kokkos::subview(distribution_function, lattice_width - 1,
@@ -173,8 +160,6 @@ class Node {
         LatticeBoltzmann::DistributionFunction &distribution_function) {
         MPI_Status status;
         if (right != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Sending right to {:d}", rank, right)
-                      << std::endl;
             auto right_subview =
                 Kokkos::subview(distribution_function, lattice_width - 2,
                                 Kokkos::ALL, Kokkos::ALL);
@@ -187,10 +172,6 @@ class Node {
                      left_right_buffer_len, MPI_DOUBLE, left, 0, cart, &status);
 
         if (left != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Receiving left from {:d}", rank,
-                                     left)
-                      << std::endl;
-
             auto left_subview = Kokkos::subview(distribution_function, 0,
                                                 Kokkos::ALL, Kokkos::ALL);
 
@@ -204,8 +185,6 @@ class Node {
         MPI_Status status;
 
         if (down != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Sending down to {:d}", rank, down)
-                      << std::endl;
             auto down_subview = Kokkos::subview(distribution_function,
                                                 Kokkos::ALL, 1, Kokkos::ALL);
             Kokkos::deep_copy(up_down_gpu_buffer, down_subview);
@@ -217,9 +196,6 @@ class Node {
                      MPI_DOUBLE, up, 0, cart, &status);
 
         if (up != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Receiving up from {:d}", rank, up)
-                      << std::endl;
-
             auto up_subview =
                 Kokkos::subview(distribution_function, Kokkos ::ALL,
                                 lattice_height - 1, Kokkos::ALL);
@@ -234,8 +210,6 @@ class Node {
         MPI_Status status;
 
         if (up != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Sending up to {:d}", rank, up)
-                      << std::endl;
             auto up_subview =
                 Kokkos::subview(distribution_function, Kokkos::ALL,
                                 lattice_height - 2, Kokkos::ALL);
@@ -248,10 +222,6 @@ class Node {
                      MPI_DOUBLE, down, 0, cart, &status);
 
         if (down != MPI_PROC_NULL) {
-            std::cout << fmt::format("{:d}: Receiving down from {:d}", rank,
-                                     down)
-                      << std::endl;
-
             auto down_subview = Kokkos::subview(distribution_function,
                                                 Kokkos ::ALL, 0, Kokkos::ALL);
 
@@ -289,7 +259,7 @@ int main(int argc, char *argv[]) {
                   << std::endl;
 
         const double omega = 1.2;
-        const int iterations = 0;
+        const int iterations = 200;
 
         const double lid_vel_x = 0.1, lid_vel_y = 0.0;
 
@@ -350,16 +320,18 @@ int main(int argc, char *argv[]) {
                 walls);
         }
 
+            Kokkos::fence();
+
         auto elapsed = timer.seconds();
         auto actual_width = node.lattice_width - node.left - node.right;
         auto actual_height = node.lattice_height - node.down - node.up;
         auto mlups =
-            (actual_width * actual_height * iterations) / (elapsed * 1000000);
+            (static_cast<double>(GLOBAL_DOMAIN_SIZE) * GLOBAL_DOMAIN_SIZE * iterations) / (elapsed * 1000000);
 
         std::cout << fmt::format("{:d}: {:d}x{:d} - {:d} iterations took "
                                  "{:f} seconds = {:f} MLUPS",
-                                 node.rank, actual_width, actual_width,
-                                 iterations, mlups)
+                                 node.rank, actual_width, actual_height,
+                                 iterations, elapsed, mlups)
                   << std::endl;
 
         // // Make a view which excludes the ghost layers of the velocity
