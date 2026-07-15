@@ -80,35 +80,36 @@ class Node {
         // Check if the neighbors wrap around
         // If yes, set the neighbor rank to MPI_PROC_NULL
         // If no, remember that this node has a ghost layer on that side
-        std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
-                  << std::endl;
-        std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
-                  << std::endl;
-        std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
-                  << std::endl;
-        std::cout << fmt::format("{:d}: My up is {:d}", rank, up) << std::endl;
 
         if (coords[0] == 0) {
-            left = MPI_PROC_NULL;
+            up = MPI_PROC_NULL;
         } else {
+            std::cout << fmt::format("{:d}: My up is {:d}", rank, up)
+                      << std::endl;
             ghost_layers.left = 1;
         }
 
         if (coords[0] == dims[0] - 1) {
-            right = MPI_PROC_NULL;
+            down = MPI_PROC_NULL;
         } else {
+            std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
+                      << std::endl;
             ghost_layers.right = 1;
         }
 
         if (coords[1] == 0) {
-            down = MPI_PROC_NULL;
+            left = MPI_PROC_NULL;
         } else {
             ghost_layers.down = 1;
+            std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
+                      << std::endl;
         }
 
         if (coords[1] == dims[1] - 1) {
-            up = MPI_PROC_NULL;
+            right = MPI_PROC_NULL;
         } else {
+            std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
+                      << std::endl;
             ghost_layers.up = 1;
         }
 
