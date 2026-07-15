@@ -81,6 +81,10 @@ class Node {
         // If yes, set the neighbor rank to MPI_PROC_NULL
         // If no, remember that this node has a ghost layer on that side
 
+        // MPI is row dominant, so the first dimension is the vertical position
+        // and the second dimension is the horizontal position
+        // Positive y is down, so we treat node at [0, 0] as the top left node
+
         if (coords[0] == 0) {
             up = MPI_PROC_NULL;
         } else {
@@ -326,6 +330,7 @@ int main(int argc, char *argv[]) {
             "Distribution Function", node.lattice_width, node.lattice_height);
 
         std::cout << "starting iterations" << std::endl;
+        auto timer = Kokkos::Timer();
         for (int i = 0; i < iterations; i++) {
             LatticeBoltzmann::calculate_density(density_function,
                                                 distribution_function);
@@ -344,6 +349,18 @@ int main(int argc, char *argv[]) {
                 buffer_distribution, distribution_function, density_function,
                 walls);
         }
+
+        auto elapsed = timer.seconds();
+        auto actual_width = node.lattice_width - node.left - node.right;
+        auto actual_height = node.lattice_height - node.down - node.up;
+        auto mlups =
+            (actual_width * actual_height * iterations) / (elapsed * 1000000);
+
+        std::cout << fmt::format("{:d}: {:d}x{:d} - {:d} iterations took "
+                                 "{:f} seconds = {:f} MLUPS",
+                                 node.rank, actual_width, actual_width,
+                                 iterations, mlups)
+                  << std::endl;
 
         // // Make a view which excludes the ghost layers of the velocity
         // profile
