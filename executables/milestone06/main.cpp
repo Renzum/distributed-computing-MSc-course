@@ -85,7 +85,7 @@ class Node {
         // and the second dimension is the horizontal position
         // Positive y is down, so we treat node at [0, 0] as the top left node
 
-	        std::cout << fmt::format("{:d}: My up is {:d}", rank, up) << std::endl;
+        std::cout << fmt::format("{:d}: My up is {:d}", rank, up) << std::endl;
         std::cout << fmt::format("{:d}: My down is {:d}", rank, down)
                   << std::endl;
         std::cout << fmt::format("{:d}: My left is {:d}", rank, left)
@@ -93,19 +93,19 @@ class Node {
         std::cout << fmt::format("{:d}: My right is {:d}", rank, right)
                   << std::endl;
 
-        if (up == MPI_PROC_NULL) {
+        if (up != MPI_PROC_NULL) {
             ghost_layers.up = 1;
         }
 
-        if (down == MPI_PROC_NULL) {
+        if (down != MPI_PROC_NULL) {
             ghost_layers.down = 1;
         }
 
-        if (left == MPI_PROC_NULL) {
+        if (left != MPI_PROC_NULL) {
             ghost_layers.left = 1;
         }
 
-        if (right == MPI_PROC_NULL) {
+        if (right != MPI_PROC_NULL) {
             ghost_layers.right = 1;
         }
 
@@ -188,7 +188,7 @@ class Node {
             auto down_subview = Kokkos::subview(distribution_function,
                                                 Kokkos::ALL, 1, Kokkos::ALL);
             Kokkos::deep_copy(up_down_gpu_buffer, down_subview);
-            Kokkos::deep_copy(up_down_send_buffer, left_right_gpu_buffer);
+            Kokkos::deep_copy(up_down_send_buffer, up_down_gpu_buffer);
         }
 
         MPI_Sendrecv(up_down_send_buffer.data(), up_down_buffer_len, MPI_DOUBLE,
@@ -201,7 +201,7 @@ class Node {
                                 lattice_height - 1, Kokkos::ALL);
 
             Kokkos::deep_copy(up_down_gpu_buffer, up_down_recv_buffer);
-            Kokkos::deep_copy(up_subview, left_right_gpu_buffer);
+            Kokkos::deep_copy(up_subview, up_down_gpu_buffer);
         }
     }
 
@@ -214,7 +214,7 @@ class Node {
                 Kokkos::subview(distribution_function, Kokkos::ALL,
                                 lattice_height - 2, Kokkos::ALL);
             Kokkos::deep_copy(up_down_gpu_buffer, up_subview);
-            Kokkos::deep_copy(up_down_send_buffer, left_right_gpu_buffer);
+            Kokkos::deep_copy(up_down_send_buffer, up_down_gpu_buffer);
         }
 
         MPI_Sendrecv(up_down_send_buffer.data(), up_down_buffer_len, MPI_DOUBLE,
@@ -226,7 +226,7 @@ class Node {
                                                 Kokkos ::ALL, 0, Kokkos::ALL);
 
             Kokkos::deep_copy(up_down_gpu_buffer, up_down_recv_buffer);
-            Kokkos::deep_copy(down_subview, left_right_gpu_buffer);
+            Kokkos::deep_copy(down_subview, up_down_gpu_buffer);
         }
     }
 
@@ -320,13 +320,14 @@ int main(int argc, char *argv[]) {
                 walls);
         }
 
-            Kokkos::fence();
+        Kokkos::fence();
 
         auto elapsed = timer.seconds();
         auto actual_width = node.lattice_width - node.left - node.right;
         auto actual_height = node.lattice_height - node.down - node.up;
-        auto mlups =
-            (static_cast<double>(GLOBAL_DOMAIN_SIZE) * GLOBAL_DOMAIN_SIZE * iterations) / (elapsed * 1000000);
+        auto mlups = (static_cast<double>(GLOBAL_DOMAIN_SIZE) *
+                      GLOBAL_DOMAIN_SIZE * iterations) /
+                     (elapsed * 1000000);
 
         std::cout << fmt::format("{:d}: {:d}x{:d} - {:d} iterations took "
                                  "{:f} seconds = {:f} MLUPS",
