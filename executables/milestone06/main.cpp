@@ -8,6 +8,7 @@
 #include <direction_definitions.hpp>
 #include <distribution_initializers.hpp>
 #include <lattice_boltzmann.hpp>
+#include <mpi_comm.hpp>
 #include <mpi_node.hpp>
 #include <output_functions.hpp>
 
@@ -18,7 +19,7 @@ int main(int argc, char *argv[]) {
     Kokkos::initialize(argc, argv);
 
     {
-        Node node(GLOBAL_DOMAIN_SIZE);
+        GPUAware::Node node(GLOBAL_DOMAIN_SIZE);
 
         std::cout << fmt::format(
                          "I'm node with rank {:d} and dimensions {:d}x{:d}",
@@ -92,8 +93,10 @@ int main(int argc, char *argv[]) {
         Kokkos::fence();
 
         auto elapsed = timer.seconds();
-        auto actual_width = node.lattice_width - node.left - node.right;
-        auto actual_height = node.lattice_height - node.down - node.up;
+        auto actual_width = node.lattice_width - node.ghost_layers.left -
+                            node.ghost_layers.right;
+        auto actual_height =
+            node.lattice_height - node.ghost_layers.down - node.ghost_layers.up;
         auto mlups = (static_cast<double>(GLOBAL_DOMAIN_SIZE) *
                       GLOBAL_DOMAIN_SIZE * iterations) /
                      (elapsed * 1000000);
