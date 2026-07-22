@@ -7,4 +7,4 @@ add_library(lib STATIC
 
 target_include_directories(lib PUBLIC include)
 
-target_link_libraries(lib PUBLIC MPI::MPI_CXX Eigen3::Eigen Kokkos::kokkos)
+target_link_libraries(lib PUBLIC MPI::MPI_CXX Kokkos::kokkos)
