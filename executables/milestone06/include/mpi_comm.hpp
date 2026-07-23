@@ -3,47 +3,29 @@
 #include <mpi.h>
 
 #include <lattice_boltzmann_types.hpp>
+#include <mpi_impl.hpp>
 
-// class IMPIComm {
-//   public:
-//     int lattice_width;
-//     int lattice_height;
-
-//     IMPIComm(int width_width_ghost_layers, int height_with_ghost_layers)
-//         : lattice_width(lattice_width),
-//           lattice_height(lattice_height) {};
-
-//     virtual void communicate_left(
-//         LatticeBoltzmann::DistributionFunction &distribution_function);
-//     virtual void communicate_right(
-//         LatticeBoltzmann::DistributionFunction &distribution_function);
-//     virtual void communicate_down(
-//         LatticeBoltzmann::DistributionFunction &distribution_function);
-//     virtual void communicate_up(
-//         LatticeBoltzmann::DistributionFunction &distribution_function);
-//     virtual void communicate_all(
-//         LatticeBoltzmann::DistributionFunction &distribution_function);
-// };
-
-namespace GPUAware {
-
-class Node {
-  private:
+class MPICommunicator {
   public:
+    IMPIImplementation mpi_implementation;
+
     struct GhostLayers {
         int left = 0, right = 0, down = 0, up = 0;
     };
 
     GhostLayers ghost_layers{};
 
+    int mpi_domain_size;
+    int mpi_rank;
     MPI_Comm cart{};
 
     int dims[2] = {0, 0};
     int periods[2] = {0, 0};
-
     int coords[2];
 
     int up, down, left, right;
+
+    int lattice_width, lattice_height;
 
     // Buffers for moving slices from GPU to CPU and vice versa
     using GPUBuffer = Kokkos::View<double *[TOTAL_DIRECTIONS]>;
@@ -55,22 +37,8 @@ class Node {
     GPUBuffer up_down_recv_gpu_buffer;
     int up_down_buffer_len;
 
-    int lattice_width, lattice_height;
+    MPICommunicator(int domain_width, int domain_height);
 
-    int rank, mpi_domain_size;
-
-    Node(int global_domain_size);
-
-    void communicate_left(
-        LatticeBoltzmann::DistributionFunction &distribution_function);
-    void communicate_right(
-        LatticeBoltzmann::DistributionFunction &distribution_function);
-    void communicate_down(
-        LatticeBoltzmann::DistributionFunction &distribution_function);
-    void communicate_up(
-        LatticeBoltzmann::DistributionFunction &distribution_function);
-    void communicate_all(
+    void communicate_over_mpi(
         LatticeBoltzmann::DistributionFunction &distribution_function);
 };
-
-} // namespace GPUAware

@@ -19,53 +19,59 @@ int main(int argc, char *argv[]) {
     Kokkos::initialize(argc, argv);
 
     {
-        GPUAware::Node node(GLOBAL_DOMAIN_SIZE);
+        MPICommunicator mpi_communicator(GLOBAL_DOMAIN_SIZE,
+                                         GLOBAL_DOMAIN_SIZE);
 
         std::cout << fmt::format(
                          "I'm node with rank {:d} and dimensions {:d}x{:d}",
-                         node.rank, node.lattice_width, node.lattice_height)
+                         mpi_communicator.mpi_rank,
+                         mpi_communicator.lattice_width,
+                         mpi_communicator.lattice_height)
                   << std::endl;
 
         const double omega = 1.2;
-        const int iterations = 200;
+        const int iterations = 0;
 
         const double lid_vel_x = 0.1, lid_vel_y = 0.0;
 
         LatticeBoltzmann::Walls walls{
                 // If there is no right neighbor, the right wall is a
                 // bounce-back
-                (node.right != MPI_PROC_NULL)
+                (mpi_communicator.right != MPI_PROC_NULL)
                     ? LatticeBoltzmann::Wall{ 
                           LatticeBoltzmann::BoundaryType::Periodic, }
                     : LatticeBoltzmann::Wall{ 
                           LatticeBoltzmann::BoundaryType::BounceBack, 0, 0, },
                 // If there is no down neighbor, the bottom wall is a
                 // bounce-back
-                (node.down != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic,}
+                (mpi_communicator.down != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic,}
                                              : LatticeBoltzmann::Wall{ LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
                 // If there is no left neighbor, the left wall is a
                 // bounce-back (otherwise periodic)
-                (node.left != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
+                (mpi_communicator.left != MPI_PROC_NULL) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
                                              : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
                 // If there is no up neighbor, the top wall is a
                 // moving lid (otherwise periodic)
-                (node.up != MPI_PROC_NULL)
+                (mpi_communicator.up != MPI_PROC_NULL)
                     ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
                     : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, lid_vel_x, lid_vel_y ,},
             };
 
         LatticeBoltzmann::DistributionFunction distribution_function(
-            "Distribution Function", node.lattice_width, node.lattice_height);
+            "Distribution Function", mpi_communicator.lattice_width,
+            mpi_communicator.lattice_height);
 
         LatticeBoltzmann::DistributionInitializers::random_density(
             distribution_function);
         LatticeBoltzmann::DistributionFunction buffer_distribution(
-            "Buffer Distribution Function", node.lattice_width,
-            node.lattice_height);
+            "Buffer Distribution Function", mpi_communicator.lattice_width,
+            mpi_communicator.lattice_height);
         LatticeBoltzmann::DensityFunction density_function(
-            "Distribution Function", node.lattice_width, node.lattice_height);
+            "Distribution Function", mpi_communicator.lattice_width,
+            mpi_communicator.lattice_height);
         LatticeBoltzmann::VelocityProfile velocity_profile(
-            "Distribution Function", node.lattice_width, node.lattice_height);
+            "Distribution Function", mpi_communicator.lattice_width,
+            mpi_communicator.lattice_height);
 
         std::cout << "starting iterations" << std::endl;
 
@@ -83,7 +89,7 @@ int main(int argc, char *argv[]) {
 
             Kokkos::fence();
 
-            node.communicate_all(distribution_function);
+            // mpi_communicator.communicate_all(distribution_function);
 
             LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(
                 buffer_distribution, distribution_function, density_function,
@@ -93,18 +99,20 @@ int main(int argc, char *argv[]) {
         Kokkos::fence();
 
         auto elapsed = timer.seconds();
-        auto actual_width = node.lattice_width - node.ghost_layers.left -
-                            node.ghost_layers.right;
-        auto actual_height =
-            node.lattice_height - node.ghost_layers.down - node.ghost_layers.up;
+        auto actual_width = mpi_communicator.lattice_width -
+                            mpi_communicator.ghost_layers.left -
+                            mpi_communicator.ghost_layers.right;
+        auto actual_height = mpi_communicator.lattice_height -
+                             mpi_communicator.ghost_layers.down -
+                             mpi_communicator.ghost_layers.up;
         auto mlups = (static_cast<double>(GLOBAL_DOMAIN_SIZE) *
                       GLOBAL_DOMAIN_SIZE * iterations) /
                      (elapsed * 1000000);
 
         std::cout << fmt::format("{:d}: {:d}x{:d} - {:d} iterations took "
                                  "{:f} seconds = {:f} MLUPS",
-                                 node.rank, actual_width, actual_height,
-                                 iterations, elapsed, mlups)
+                                 mpi_communicator.mpi_rank, actual_width,
+                                 actual_height, iterations, elapsed, mlups)
                   << std::endl;
 
         // // Make a view which excludes the ghost layers of the velocity
