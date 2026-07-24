@@ -1,4 +1,6 @@
-add_executable(milestone06 main.cpp mpi_data.cpp mpi_impl.cpp mpi_layer.cpp)
+add_executable(milestone06 main.cpp mpi_data.cpp mpi_impl.cpp mpi_layer.cpp
+    mpi_impl_not_gpu_aware.cpp
+    mpi_impl_gpu_aware.cpp)
 
 target_include_directories(milestone06 PRIVATE include)
 
