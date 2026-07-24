@@ -6,6 +6,8 @@
     "words": [
         "Kokkos",
         "MLUPS",
+        "MPIGPU",
+        "Sendrecv",
         "xlabel",
         "xlim",
         "ylabel"

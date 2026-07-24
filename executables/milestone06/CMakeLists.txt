@@ -1,4 +1,4 @@
-add_executable(milestone06 main.cpp mpi_node.cpp mpi_comm.cpp mpi_impl.cpp)
+add_executable(milestone06 main.cpp mpi_data.cpp mpi_impl.cpp mpi_layer.cpp)
 
 target_include_directories(milestone06 PRIVATE include)
 
