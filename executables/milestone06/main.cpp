@@ -15,7 +15,7 @@
 #define GLOBAL_DOMAIN_SIZE 100
 
 void get_domain_dimensions(int argc, char *argv[], int &domain_width,
-                           int &domain_height) {
+                           int &domain_height, int &iterations) {
     for (int i = 1; i < argc; i++) {
         if (strncmp(argv[i], "--width", 7) == 0) {
             domain_width = atoi(argv[++i]);
@@ -24,15 +24,20 @@ void get_domain_dimensions(int argc, char *argv[], int &domain_width,
         if (strncmp(argv[i], "--height", 8) == 0) {
             domain_height = atoi(argv[++i]);
         }
+
+        if (strncmp(argv[i], "--iterations", 12) == 0) {
+            iterations = atoi(argv[++i]);
+        }
     }
 }
 
 int main(int argc, char *argv[]) {
-    int domain_width = 0, domain_height = 0;
-    get_domain_dimensions(argc, argv, domain_width, domain_height);
+    int domain_width = 0, domain_height = 0, iterations = 0;
+    get_domain_dimensions(argc, argv, domain_width, domain_height, iterations);
 
-    if (domain_width == 0 || domain_height == 0) {
+    if (domain_width == 0 || domain_height == 0 || iterations == 0) {
         std::cout << "Please provide the --width and --height of the domain "
+                     "and the number of --iterations"
                      "via command line arguments."
                   << std::endl;
         std::exit(1);
@@ -52,7 +57,6 @@ int main(int argc, char *argv[]) {
                   << std::endl;
 
         const double omega = 1.2;
-        const int iterations = 10;
 
         const double lid_vel_x = 0.1, lid_vel_y = 0.0;
 
