@@ -48,6 +48,10 @@ int main(int argc, char *argv[]) {
 
     {
         MPILayer mpi_communicator(domain_width, domain_height);
+        std::cout << fmt::format("{:d}: Using GPU with Device ID {:d}",
+                                 mpi_communicator.mpi_data->rank,
+                                 Kokkos::device_id())
+                  << std::endl;
 
         std::cout << fmt::format(
                          "I'm node with rank {:d} and dimensions {:d}x{:d}",
