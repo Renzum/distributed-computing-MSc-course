@@ -5,9 +5,6 @@
 MPILayer::MPILayer(int domain_width, int domain_height) {
     mpi_data = std::shared_ptr<MPIData>(new MPIData{});
 
-    this->domain_width = domain_width;
-    this->domain_height = domain_height;
-
     // We only want ghost layers on the sides that have a neighbor which the
     // node shalle communicate with
     if (mpi_data->top_neighbor != MPI_PROC_NULL) {
