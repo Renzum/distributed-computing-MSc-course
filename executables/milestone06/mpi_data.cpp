@@ -1,4 +1,8 @@
+#include <iostream>
+
 #include <mpi.h>
+
+#include <fmt/format.h>
 
 #include "mpi_data.hpp"
 
@@ -24,4 +28,9 @@ MPIData::MPIData() {
                    &bottom_neighbor);
     MPI_Cart_shift(cart, /* dim */ 1, /* displacement */ 1, &left_neighbor,
                    &right_neighbor);
+
+    if (rank == 0) {
+        std::cout << fmt::format("MPI Dimensions: {:d}x{:d}", dims[0], dims[1])
+                  << std::endl;
+    }
 }
