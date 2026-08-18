@@ -12,6 +12,8 @@ class MPILayer {
   public:
     std::shared_ptr<MPIData> mpi_data;
 
+    int domain_width, domain_height;
+
     struct GhostLayers {
         int left = 0, right = 0, down = 0, up = 0;
     };
