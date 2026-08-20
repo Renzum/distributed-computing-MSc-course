@@ -4,6 +4,8 @@
 
 #include <Kokkos_Core.hpp>
 
+#include <lattice_boltzmann_types.hpp>
+
 #include "amplitude.hpp"
 
 AmplitudeOutput::AmplitudeOutput(std::string file_name)
@@ -27,21 +29,23 @@ void AmplitudeOutput::new_data_set(const double &omega, const int &max_y) {
     output_file << "  amplitudes: " << std::endl;
 }
 
-long double sample_amp_at_max(const Kokkos::View<double ***> &local_avg_vel) {
+long double
+sample_amp_at_max(const LatticeBoltzmann::VelocityProfile &velocity_profile) {
     const int max_y =
-        local_avg_vel.extent_int(1); // Get the y size of the lattice
+        velocity_profile.extent_int(1); // Get the y size of the lattice
     const long double zeta = 2.0 * M_PI / max_y; // 2pi / L_y
 
-    long double amplitude = local_avg_vel(0, static_cast<int>(max_y / 4.0), 0);
+    long double amplitude =
+        velocity_profile(0, static_cast<int>(max_y / 4.0), 0);
     return amplitude;
 }
 
 // Calculate the Fourier amplitude of the u_x
 long double calculate_amplitude_via_projection(
-    const Kokkos::View<double ***> &local_avg_vel) {
+    const LatticeBoltzmann::VelocityProfile &velocity_profile) {
 
     const int max_y =
-        local_avg_vel.extent_int(1); // Get the y size of the lattice
+        velocity_profile.extent_int(1); // Get the y size of the lattice
 
     const long double zeta = 2.0 * M_PI / max_y; // 2pi / L_y
 
@@ -54,7 +58,7 @@ long double calculate_amplitude_via_projection(
         KOKKOS_LAMBDA(const int &y_j, long double &local_vel_sum) {
             const long double sin_component = std::sin(zeta * y_j);
             local_vel_sum +=
-                static_cast<long double>(local_avg_vel(0, y_j, 0)) *
+                static_cast<long double>(velocity_profile(0, y_j, 0)) *
                 sin_component;
         },
         amplitude);

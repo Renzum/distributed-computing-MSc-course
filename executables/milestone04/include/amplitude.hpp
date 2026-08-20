@@ -7,9 +7,10 @@
 
 #include <lattice_boltzmann.hpp>
 
+long double calculate_amplitude_via_projection(
+    const LatticeBoltzmann::VelocityProfile &velocity_profile);
 long double
-calculate_amplitude_via_projection(const Kokkos::View<double ***> &);
-long double sample_amp_at_max(const Kokkos::View<double ***> &);
+sample_amp_at_max(const LatticeBoltzmann::VelocityProfile &velocity_profile);
 
 class AmplitudeOutput {
   private:
