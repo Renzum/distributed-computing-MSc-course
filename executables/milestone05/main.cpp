@@ -23,10 +23,14 @@ void ms5() {
 
     // Sliding Lid wall configuration
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall{0, 0},   // Right
-        LatticeBoltzmann::Wall{0, 0},   // Bottom
-        LatticeBoltzmann::Wall{0, 0},   // Left
-        LatticeBoltzmann::Wall{0.1, 0}, // Top
+        LatticeBoltzmann::Wall(
+            LatticeBoltzmann::BoundaryType::BounceBack), // Right
+        LatticeBoltzmann::Wall(
+            LatticeBoltzmann::BoundaryType::BounceBack), // Bottom
+        LatticeBoltzmann::Wall(
+            LatticeBoltzmann::BoundaryType::BounceBack), // Left
+        LatticeBoltzmann::Wall(LatticeBoltzmann::BoundaryType::BounceBack, 0.1,
+                               0) // Top
     };
 
     constexpr double omega = 1.7;
@@ -55,7 +59,7 @@ void ms5() {
 
     Kokkos::Timer timer;
 
-    const int iterations = 200;
+    const int iterations = 2000;
     for (int i = 0; i < iterations; i++) {
         if (i % 20 == 0) {
             std::cout << "Heartbeat: Iteration " << i << std::endl;
