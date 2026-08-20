@@ -14,17 +14,24 @@ void streaming() {
     DistributionFunctionOutput distribution_output{
         "milestone02_random_density_streaming_only-distribution.csv"};
 
-    auto lbm_functions = LatticeBoltzmann::Functions(GRID_WIDTH, GRID_HEIGHT);
+    LatticeBoltzmann::DistributionFunction distribution_function(
+        "Distribution Function", GRID_WIDTH, GRID_HEIGHT);
+    LatticeBoltzmann::DistributionFunction buffer_distribution_function(
+        "Buffer Distribution Function", GRID_WIDTH, GRID_HEIGHT);
+
+    LatticeBoltzmann::DistributionFunction::HostMirror
+        host_distribution_mirror =
+            Kokkos::create_mirror_view(distribution_function);
 
     LatticeBoltzmann::DistributionInitializers::random_density(
-        lbm_functions.distribution_function);
+        distribution_function);
 
     for (int i = 0; i < GENERATIONS; i++) {
-        Kokkos::deep_copy(lbm_functions.host_distribution_function,
-                          lbm_functions.distribution_function);
+        Kokkos::deep_copy(host_distribution_mirror, distribution_function);
 
-        distribution_output.output(lbm_functions.host_distribution_function, i);
-        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions);
+        distribution_output.output(host_distribution_mirror, i);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(
+            buffer_distribution_function, distribution_function);
     }
 }
 

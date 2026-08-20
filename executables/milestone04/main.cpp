@@ -8,6 +8,7 @@
 
 #include <amplitude.hpp>
 #include <lattice_boltzmann.hpp>
+#include <lattice_boltzmann_types.hpp>
 #include <output_functions.hpp>
 
 #include "main.hpp"
@@ -29,27 +30,49 @@ void ms4() {
 
     AmplitudeOutput amp_output("milestone4-amplitudes.yaml");
 
-    LatticeBoltzmann::Functions lbm_functions(lattice_width, lattice_height);
+    LatticeBoltzmann::DistributionFunction origin_distribution_function(
+        "Original Distribution Function", lattice_width, lattice_height);
+    LatticeBoltzmann::DensityFunction origin_density_function(
+        "Original Density Function", lattice_width, lattice_height);
+    LatticeBoltzmann::VelocityProfile origin_velocity_profile(
+        "Original Velocity Profile Function", lattice_width, lattice_height);
 
-    init_starting_distribution(lbm_functions);
+    LatticeBoltzmann::DistributionFunction buffer_distribution_function(
+        "Buffer Distribution Function", lattice_width, lattice_height);
 
-    for (auto it = omegas.begin(); it != omegas.end(); it++) {
-        auto lbm_copy = duplicate_functions(lbm_functions);
+    init_starting_distribution(origin_density_function, origin_velocity_profile,
+                               lattice_width, lattice_height);
+
+    LatticeBoltzmann::DistributionFunction distribution_function(
+        "Distribution Function", lattice_width, lattice_height);
+    LatticeBoltzmann::DensityFunction density_function(
+        "Density Function", lattice_width, lattice_height);
+    LatticeBoltzmann::VelocityProfile velocity_profile(
+        "Velocity Profile Function", lattice_width, lattice_height);
+
+    for (const double &omega : omegas) {
+        Kokkos::deep_copy(distribution_function, origin_distribution_function);
+
+        Kokkos::deep_copy(density_function, origin_density_function);
+
+        Kokkos::deep_copy(velocity_profile, origin_velocity_profile);
 
         std::cout << fmt::format(
                          "Simulating a {:d}x{:d} lattice with relaxation "
                          "parameter omega set to {:f}",
-                         lattice_width, lattice_height, *it)
+                         lattice_width, lattice_height, omega)
                   << std::endl;
 
-        simulate_and_calculate(lbm_copy, *it, amp_output);
+        simulate_and_calculate(distribution_function,
+                               buffer_distribution_function, density_function,
+                               velocity_profile, omega, amp_output);
     }
 }
 
-void init_starting_distribution(LatticeBoltzmann::Functions &lbm_functions) {
-    const int lattice_width = lbm_functions.distribution_function.extent_int(0);
-    const int lattice_height =
-        lbm_functions.distribution_function.extent_int(1);
+void init_starting_distribution(
+    LatticeBoltzmann::DensityFunction &density_function,
+    LatticeBoltzmann::VelocityProfile &velocity_profile, int lattice_width,
+    int lattice_height) {
 
     // According to my research and Claude, 0.01 is a common choice for epsilon
     constexpr double epsilon = 0.01;
@@ -66,47 +89,32 @@ void init_starting_distribution(LatticeBoltzmann::Functions &lbm_functions) {
         });
 
     Kokkos::parallel_for(
-        "Initialize Density to 0.5",
+        "Initialize Density and Velocity",
         Kokkos::MDRangePolicy({0, 0}, {lattice_width, lattice_height}),
         KOKKOS_LAMBDA(const int &x, const int &y) {
             // Set density to 1 in all cells of the lattice
-            lbm_functions.density_function(x, y) = 0.5;
+            density_function(x, y) = 0.5;
 
             // Set the y component of the local average velocity to 0
-            lbm_functions.local_average_velocity(x, y, 1) = 0;
-
-            lbm_functions.local_average_velocity(x, y, 0) = u_x(y);
+            velocity_profile(x, y, 1) = 0;
+            velocity_profile(x, y, 0) = u_x(y);
         });
 }
 
-// I originally wanted to do it via a copy constructor, but there were pointer
-// bugs that I could not figure out and the amplitudes became a NaN
-LatticeBoltzmann::Functions
-duplicate_functions(const LatticeBoltzmann::Functions &source) {
-
-    LatticeBoltzmann::Functions lbm_copy(
-        source.distribution_function.extent_int(0),
-        source.distribution_function.extent_int(1));
-
-    Kokkos::deep_copy(lbm_copy.distribution_function,
-                      source.distribution_function);
-    Kokkos::deep_copy(lbm_copy.density_function, source.density_function);
-    Kokkos::deep_copy(lbm_copy.local_average_velocity,
-                      source.local_average_velocity);
-    return lbm_copy;
-}
-
-void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
-                            const double &omega, AmplitudeOutput &amp_output) {
-    const int lattice_width = lbm_functions.distribution_function.extent_int(0);
-    const int lattice_height =
-        lbm_functions.distribution_function.extent_int(1);
+void simulate_and_calculate(
+    LatticeBoltzmann::DistributionFunction &distribution_function,
+    LatticeBoltzmann::DistributionFunction &buffer_distribution_function,
+    LatticeBoltzmann::DensityFunction &density_function,
+    LatticeBoltzmann::VelocityProfile &velocity_profile, const double &omega,
+    AmplitudeOutput &amp_output) {
+    const int lattice_width = distribution_function.extent_int(0);
+    const int lattice_height = distribution_function.extent_int(1);
 
     LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
     };
 
     DistributionFunctionOutput distribution_output(
@@ -122,8 +130,14 @@ void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
 
     // Calculate the f_eq and set f to it
     LatticeBoltzmann::calculate_equilibrium_distribution(
-        lbm_functions.distribution_function, lbm_functions.density_function,
-        lbm_functions.local_average_velocity, walls);
+        distribution_function, density_function, velocity_profile);
+
+    LatticeBoltzmann::DistributionFunction::HostMirror
+        host_distribution_mirror = Kokkos::create_mirror(distribution_function);
+    LatticeBoltzmann::DensityFunction::HostMirror host_density_mirror =
+        Kokkos::create_mirror(density_function);
+    LatticeBoltzmann::VelocityProfile::HostMirror host_velocity_profile_mirror =
+        Kokkos::create_mirror(velocity_profile);
 
     const int iterations = 600;
     for (int i = 0; i < iterations; i++) {
@@ -132,39 +146,36 @@ void simulate_and_calculate(LatticeBoltzmann::Functions &lbm_functions,
                       << std::endl;
         }
 
-        Kokkos::deep_copy(lbm_functions.host_distribution_function,
-                          lbm_functions.distribution_function);
-        Kokkos::deep_copy(lbm_functions.host_density_function,
-                          lbm_functions.density_function);
+        Kokkos::deep_copy(host_distribution_mirror, distribution_function);
+        Kokkos::deep_copy(host_density_mirror, density_function);
 
         if (i % 25 == 0) {
             std::cout << "Saving " << i << std::endl;
-            Kokkos::deep_copy(lbm_functions.host_local_average_velocity,
-                              lbm_functions.local_average_velocity);
-            velocity_output.add_timestep(
-                lbm_functions.host_local_average_velocity, i);
+            Kokkos::deep_copy(host_velocity_profile_mirror, velocity_profile);
+            velocity_output.add_timestep(host_velocity_profile_mirror, i);
         }
 
-        distribution_output.output(lbm_functions.host_distribution_function, i);
-        density_output.output(lbm_functions.host_density_function, i);
+        distribution_output.output(host_distribution_mirror, i);
+        density_output.output(host_density_mirror, i);
 
 #ifndef USE_SAMPLE_AT_MAX
-        const long double amp = calculate_amplitude_via_projection(
-            lbm_functions.local_average_velocity);
-#else
         const long double amp =
-            sample_amp_at_max(lbm_functions.local_average_velocity);
+            calculate_amplitude_via_projection(velocity_profile);
+#else
+        const long double amp = sample_amp_at_max(velocity_profile);
 #endif
 
         amp_output.append_data_set(amp, i);
 
-        LatticeBoltzmann::calculate_density(lbm_functions, walls);
-        LatticeBoltzmann::calculate_local_average_velocity(lbm_functions,
-                                                           walls);
-        LatticeBoltzmann::calculate_equilibrium_distribution(lbm_functions,
-                                                             walls);
-        LatticeBoltzmann::relax_distribution(lbm_functions, omega, walls);
-        LatticeBoltzmann::streaming_step_with_periodic_bounds(lbm_functions,
-                                                              walls);
+        LatticeBoltzmann::calculate_density(density_function,
+                                            distribution_function);
+        LatticeBoltzmann::calculate_local_average_velocity(
+            velocity_profile, distribution_function, density_function);
+        LatticeBoltzmann::calculate_equilibrium_distribution(
+            buffer_distribution_function, density_function, velocity_profile);
+        LatticeBoltzmann::relax_distribution(
+            distribution_function, buffer_distribution_function, omega);
+        LatticeBoltzmann::streaming_step_with_periodic_bounds(
+            buffer_distribution_function, distribution_function);
     }
 }

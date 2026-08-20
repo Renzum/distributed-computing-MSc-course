@@ -5,10 +5,7 @@
 #include <direction_definitions.hpp>
 #include <distribution_initializers.hpp>
 #include <lattice_boltzmann.hpp>
-
-void streaming_test(
-    LatticeBoltzmann::DistributionFunction &distribution_function) {
-}
+#include <lattice_boltzmann_types.hpp>
 
 TEST(MILESTONE02, STREAMING_STEP) {
     const int grid_width = 20;
@@ -22,12 +19,11 @@ TEST(MILESTONE02, STREAMING_STEP) {
     LatticeBoltzmann::DistributionInitializers::random_density(
         distribution_function);
 
-    auto host_mirror = Kokkos::create_mirror_view(distribution_function);
-
-    auto host_buffer = Kokkos::create_mirror_view(buffer_distribution);
-
     LatticeBoltzmann::streaming_step_with_periodic_bounds(
         buffer_distribution, distribution_function);
+
+    auto host_mirror = Kokkos::create_mirror_view(distribution_function);
+    auto host_buffer = Kokkos::create_mirror_view(buffer_distribution);
 
     Kokkos::deep_copy(host_mirror, distribution_function);
     Kokkos::deep_copy(host_buffer, buffer_distribution);
@@ -51,7 +47,6 @@ TEST(MILESTONE02, STREAMING_STEP) {
     for (int x = 0; x < grid_width; x++) {
         for (int y = 0; y < grid_height; y++) {
 
-            // TODO: Fill the rest of the unit test
             ASSERT_EQ(host_buffer(x, y, Direction::Center),
                       host_mirror(x, y, Direction::Center));
 

@@ -174,10 +174,10 @@ TEST(MILESTONE03, MOMENTUM_CONSERVATION) {
         distribution_function);
 
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
-        LatticeBoltzmann::Wall{},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic},
     };
 
     const int iterations = 100;
@@ -284,8 +284,8 @@ TEST(MILESTONE03, FIXED_POINT) {
                     const double current_value =
                         host_distribution_mirror(x, y, direction);
 
-                    // Assert that the previous distribution value is the same
-                    // as the new one after the streaming step
+                    // Assert that the previous distribution value is the
+                    // same as the new one after the streaming step
                     ASSERT_NEAR(prev_value, current_value,
                                 std::numeric_limits<double>::epsilon() *
                                     prev_value);
@@ -314,16 +314,16 @@ TEST(MILESTONE03, BUMP_TO_UNIFORM) {
     auto host_velocity_profile_mirror =
         Kokkos::create_mirror_view(velocity_profile);
 
-    // Fill the distribution with a uniform value 1.0 unless the location is in
-    // the middle 1/3 of the lattice, in which case we fill the cells with 1.1
-    // to achieve a slightly higher density in the center
+    // Fill the distribution with a uniform value 1.0 unless the location is
+    // in the middle 1/3 of the lattice, in which case we fill the cells
+    // with 1.1 to achieve a slightly higher density in the center
     LatticeBoltzmann::DistributionInitializers::
         uniform_density_with_higher_center(distribution_function, 1.0, 1.1);
 
     const double omega = 0.5;
 
-    // Perform 1000 Lattice Boltzmann steps to make sure the density has enough
-    // time to reach the uniform distribution
+    // Perform 1000 Lattice Boltzmann steps to make sure the density has
+    // enough time to reach the uniform distribution
     const int iteration_limit = 1000;
     for (int i = 0; i < iteration_limit; i++) {
         LatticeBoltzmann::calculate_density(density_function,
@@ -339,8 +339,8 @@ TEST(MILESTONE03, BUMP_TO_UNIFORM) {
     }
 
     // Capture the x = 0 y = 0 density value as a reference point
-    // and compare all of the others with it using an epsilon based tolerance
-    // which is scaled with the reference point value
+    // and compare all of the others with it using an epsilon based
+    // tolerance which is scaled with the reference point value
     Kokkos::deep_copy(host_density_function_mirror, density_function);
 
     const double reference_point = host_density_function_mirror(0, 0);
