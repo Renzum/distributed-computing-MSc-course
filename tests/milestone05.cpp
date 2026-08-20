@@ -17,10 +17,10 @@ TEST(MILESTONE05, FIXED_WALL_BOUNCE_BACK) {
     // A 20x20 lattice with fixed bounce-back boundary walls
     const int lattice_width = 20, lattice_height = 20;
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack},
+        LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack},
     };
 
     // Initialize all the necessary Views
@@ -386,15 +386,25 @@ void moving_wall_test(const int lattice_width, const int lattice_height,
 
 TEST(MILESTONE05, MOVING_WALL_TOP) {
     const int lattice_width = 20, lattice_height = 20;
-
+    // All Walls as fixed walls with bounce back
+    // Top Wall with 0.1 velocity to the right
     const LatticeBoltzmann::Walls walls{
-        // All Walls as fixed walls with bounce back
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        // Top Wall with 0.1 velocity to the right
-        LatticeBoltzmann::Wall(0.1, 0),
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0.1,
+            0,
+        },
     };
+
     moving_wall_test(lattice_width, lattice_height, walls);
 }
 
@@ -404,10 +414,20 @@ TEST(MILESTONE05, MOVING_WALL_BOTTOM) {
     // All Walls as fixed walls with bounce back
     // Bottom Wall with 0.1 velocity to the right
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0.1, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0.1,
+            0,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
     };
     moving_wall_test(lattice_width, lattice_height, walls);
 }
@@ -418,10 +438,22 @@ TEST(MILESTONE05, MOVING_WALL_TOP_AND_RIGHT) {
     // All Walls as fixed walls with bounce back
     // Bottom Wall with 0.1 velocity to the right
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall(0, 0.08),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0, 0),
-        LatticeBoltzmann::Wall(0.1, 0),
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0,
+            0.08,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0.1,
+            0,
+        },
     };
 
     moving_wall_test(lattice_width, lattice_height, walls);
@@ -430,13 +462,28 @@ TEST(MILESTONE05, MOVING_WALL_TOP_AND_RIGHT) {
 TEST(MILESTONE05, MOVING_WALL_ALL) {
     const int lattice_width = 20, lattice_height = 20;
 
-    // All Walls as fixed walls with bounce back
-    // Bottom Wall with 0.1 velocity to the right
+    // All Walls as moving walls with bounce back
     const LatticeBoltzmann::Walls walls{
-        LatticeBoltzmann::Wall(0, 0.08),
-        LatticeBoltzmann::Wall(-0.05, 0),
-        LatticeBoltzmann::Wall(0, 0.12),
-        LatticeBoltzmann::Wall(0.1, 0),
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0,
+            0.08,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            -0.05,
+            0,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0,
+            0.12,
+        },
+        LatticeBoltzmann::Wall{
+            LatticeBoltzmann::BoundaryType::BounceBack,
+            0.1,
+            0,
+        },
     };
 
     moving_wall_test(lattice_width, lattice_height, walls);
