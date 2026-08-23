@@ -1,3 +1,5 @@
 #pragma once
 
-void ms5();
+struct Arguments;
+
+void ms5(Arguments args);
