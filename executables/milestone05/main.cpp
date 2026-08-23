@@ -156,7 +156,7 @@ void ms5(Arguments args) {
 
     // MLUPS = (N_x + N_y + time_steps) / runtime * 1000000
     double mlups =
-        (lattice_size * lattice_size * iterations) / (runtime * 1000000);
+        (static_cast<double>(lattice_size) * lattice_size * iterations) / (runtime * 1000000);
 
     const double viscosity = (1.0 / 3.0) * ((1.0 / omega) - 0.5);
     std::cout << "Visc:" << viscosity << std::endl;
@@ -173,6 +173,8 @@ void ms5(Arguments args) {
               << fmt::format("Reynolds Number = {:f}",
                              walls.top.vel_x * lattice_size / viscosity)
               << std::endl;
+
+    Kokkos::deep_copy(host_velocity_profile, velocity_profile);
 
     auto final_velocity_profile_output = LocalAverageVelocityFunctionOutput(
 
