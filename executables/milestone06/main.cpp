@@ -118,27 +118,24 @@ int main(int argc, char *argv[]) {
                 "Distribution Function", mpi_layer.local_lattice_width,
                 mpi_layer.local_lattice_height);
 
-            LatticeBoltzmann::DistributionInitializers::random_density(
-                distribution_function);
             LatticeBoltzmann::DistributionFunction buffer_distribution(
                 "Buffer Distribution Function", mpi_layer.local_lattice_width,
                 mpi_layer.local_lattice_height);
             LatticeBoltzmann::DensityFunction density_function(
-                "Distribution Function", mpi_layer.local_lattice_width,
+                "Density Function", mpi_layer.local_lattice_width,
                 mpi_layer.local_lattice_height);
             LatticeBoltzmann::VelocityProfile velocity_profile(
-                "Distribution Function", mpi_layer.local_lattice_width,
+                "Velocity Profile", mpi_layer.local_lattice_width,
                 mpi_layer.local_lattice_height);
+
+            LatticeBoltzmann::DistributionInitializers::uniform_at_rest(
+                density_function, velocity_profile);
 
             std::cout << "starting iterations" << std::endl;
 
             auto timer = Kokkos::Timer();
 
             for (int i = 0; i < iterations; i++) {
-                LatticeBoltzmann::calculate_density(density_function,
-                                                    distribution_function);
-                LatticeBoltzmann::calculate_local_average_velocity(
-                    velocity_profile, distribution_function, density_function);
                 LatticeBoltzmann::calculate_equilibrium_distribution(
                     buffer_distribution, density_function, velocity_profile);
                 LatticeBoltzmann::relax_distribution(
@@ -151,6 +148,11 @@ int main(int argc, char *argv[]) {
                 LatticeBoltzmann::streaming_step_with_bounce_back_and_lid(
                     buffer_distribution, distribution_function,
                     density_function, walls);
+
+                LatticeBoltzmann::calculate_density(density_function,
+                                                    distribution_function);
+                LatticeBoltzmann::calculate_local_average_velocity(
+                    velocity_profile, distribution_function, density_function);
             }
 
             Kokkos::fence();

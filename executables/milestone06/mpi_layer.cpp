@@ -84,6 +84,7 @@ MPILayer::MPILayer(int domain_width, int domain_height) {
 
 void MPILayer::communicate(
     const LatticeBoltzmann::DistributionFunction &distribution_function) {
+
     mpi_communication_layer->communicate_left(distribution_function);
     mpi_communication_layer->communicate_right(distribution_function);
     mpi_communication_layer->communicate_down(distribution_function);
