@@ -4,6 +4,7 @@ struct Arguments {
     int iterations = 1000;
     bool print_final = false;
     int heartbeat = 0;
+    bool gpu_aware = false;
 };
 
 Arguments get_cmd_args(int argc, char *argv[]);

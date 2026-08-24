@@ -40,6 +40,10 @@ Arguments get_cmd_args(int argc, char *argv[]) {
         if (strncmp(argv[i], "--heartbeat", 11) == 0) {
             args.heartbeat = std::stoi(argv[++i]);
         }
+
+        if (strncmp(argv[i], "--gpu-aware", 11) == 0) {
+            args.gpu_aware = true;
+        }
     }
 
     if (args.domain_width == 0 || args.domain_height == 0 ||
@@ -65,7 +69,7 @@ int main(int argc, char *argv[]) {
     Kokkos::initialize(argc, argv);
 
     {
-        MPILayer mpi_layer(domain_width, domain_height);
+        MPILayer mpi_layer(domain_width, domain_height, args.gpu_aware);
 
         {
             std::cout << fmt::format("{:d}: Using GPU with Device ID {:d}",

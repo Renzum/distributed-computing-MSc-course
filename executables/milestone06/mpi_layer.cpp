@@ -4,7 +4,7 @@
 
 #include "mpi_layer.hpp"
 
-MPILayer::MPILayer(int domain_width, int domain_height) {
+MPILayer::MPILayer(int domain_width, int domain_height, bool gpu_aware) {
     mpi_data = std::shared_ptr<MPIData>(new MPIData{});
 
     // We only want ghost layers on the sides that have a neighbor which the
@@ -79,7 +79,7 @@ MPILayer::MPILayer(int domain_width, int domain_height) {
               << std::endl;
 
     mpi_communication_layer = MPIImplementationFactory::get_implementation(
-        local_lattice_width, local_lattice_height, mpi_data);
+        local_lattice_width, local_lattice_height, mpi_data, gpu_aware);
 }
 
 void MPILayer::communicate(

@@ -31,6 +31,6 @@ namespace MPIImplementationFactory {
 std::unique_ptr<MPIImplementation>
 get_implementation(const int total_lattice_width,
                    const int total_lattice_height,
-                   std::shared_ptr<MPIData> mpi_data);
+                   std::shared_ptr<MPIData> mpi_data, bool gpu_aware);
 
 } // namespace MPIImplementationFactory

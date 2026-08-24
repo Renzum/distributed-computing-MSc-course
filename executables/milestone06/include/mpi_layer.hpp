@@ -24,7 +24,7 @@ class MPILayer {
     // The MPI node's actual x and y offsets in relation to the global lattice
     int global_lattice_offset_x, global_lattice_offset_y;
 
-    MPILayer(int domain_width, int domain_height);
+    MPILayer(int domain_width, int domain_height, bool gpu_aware = false);
 
     void communicate(const LatticeBoltzmann::DistributionFunction &);
 };
