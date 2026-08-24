@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -12,35 +13,48 @@
 #include <mpi_layer.hpp>
 #include <output_functions.hpp>
 
-void get_cmd_args(int argc, char *argv[], int &domain_width, int &domain_height,
-                  int &iterations) {
+#include "main.hpp"
+
+Arguments get_cmd_args(int argc, char *argv[]) {
+
+    Arguments args{};
+
     for (int i = 1; i < argc; i++) {
         if (strncmp(argv[i], "--width", 7) == 0) {
-            domain_width = atoi(argv[++i]);
+            args.domain_width = std::stoi(argv[++i]);
         }
 
         if (strncmp(argv[i], "--height", 8) == 0) {
-            domain_height = atoi(argv[++i]);
+            args.domain_height = std::stoi(argv[++i]);
         }
 
         if (strncmp(argv[i], "--iterations", 12) == 0) {
-            iterations = atoi(argv[++i]);
+            args.iterations = std::stoi(argv[++i]);
+        }
+
+        if (strncmp(argv[i], "--print-final", 13) == 0) {
+            args.print_final = true;
         }
     }
+
+    if (args.domain_width == 0 || args.domain_height == 0 ||
+        args.iterations == 0) {
+        std::cerr << "Please provide the --width --height and --iterations for "
+                     "the simulation."
+                  << std::endl;
+
+        std::exit(1);
+    }
+
+    return args;
 }
 
 int main(int argc, char *argv[]) {
-    int domain_width = 0, domain_height = 0, iterations = 0;
+    auto args = get_cmd_args(argc, argv);
 
-    get_cmd_args(argc, argv, domain_width, domain_height, iterations);
-
-    if (domain_width == 0 || domain_height == 0 || iterations == 0) {
-        std::cout << "Please provide the --width and --height of the domain "
-                     "and the number of --iterations "
-                     "via command line arguments."
-                  << std::endl;
-        std::exit(1);
-    }
+    const int domain_width = args.domain_width;
+    const int domain_height = args.domain_height;
+    const int iterations = args.iterations;
 
     MPI_Init(&argc, &argv);
     Kokkos::initialize(argc, argv);
@@ -60,7 +74,8 @@ int main(int argc, char *argv[]) {
                              mpi_layer.mpi_data->rank,
                              mpi_layer.mpi_data->coords[0],
                              mpi_layer.mpi_data->coords[1],
-                             mpi_layer.lattice_height, mpi_layer.lattice_width)
+                             mpi_layer.local_lattice_height,
+                             mpi_layer.local_lattice_width)
                       << std::endl;
 
             const double omega = 1.2;
@@ -91,20 +106,20 @@ int main(int argc, char *argv[]) {
             };
 
             LatticeBoltzmann::DistributionFunction distribution_function(
-                "Distribution Function", mpi_layer.lattice_width,
-                mpi_layer.lattice_height);
+                "Distribution Function", mpi_layer.local_lattice_width,
+                mpi_layer.local_lattice_height);
 
             LatticeBoltzmann::DistributionInitializers::random_density(
                 distribution_function);
             LatticeBoltzmann::DistributionFunction buffer_distribution(
-                "Buffer Distribution Function", mpi_layer.lattice_width,
-                mpi_layer.lattice_height);
+                "Buffer Distribution Function", mpi_layer.local_lattice_width,
+                mpi_layer.local_lattice_height);
             LatticeBoltzmann::DensityFunction density_function(
-                "Distribution Function", mpi_layer.lattice_width,
-                mpi_layer.lattice_height);
+                "Distribution Function", mpi_layer.local_lattice_width,
+                mpi_layer.local_lattice_height);
             LatticeBoltzmann::VelocityProfile velocity_profile(
-                "Distribution Function", mpi_layer.lattice_width,
-                mpi_layer.lattice_height);
+                "Distribution Function", mpi_layer.local_lattice_width,
+                mpi_layer.local_lattice_height);
 
             std::cout << "starting iterations" << std::endl;
 
@@ -141,6 +156,31 @@ int main(int argc, char *argv[]) {
                                      mpi_layer.mpi_data->rank, domain_width,
                                      domain_height, iterations, elapsed, mlups)
                       << std::endl;
+
+            if (args.print_final) {
+                auto velocity_subview = Kokkos::subview(
+                    velocity_profile,
+                    std::make_pair(mpi_layer.ghost_layers.left,
+                                   mpi_layer.local_lattice_width -
+                                       mpi_layer.ghost_layers.right),
+                    std::make_pair(mpi_layer.ghost_layers.down,
+                                   mpi_layer.local_lattice_height -
+                                       mpi_layer.ghost_layers.up),
+                    Kokkos::ALL);
+
+                auto actual_velocity_host_mirror =
+                    Kokkos::create_mirror_view(velocity_subview);
+
+                std::cout << fmt::format("Subview dimensions [{:d}, {:d}]",
+                                         velocity_subview.extent_int(0),
+                                         velocity_subview.extent_int(1))
+                          << std::endl;
+
+                Kokkos::deep_copy(actual_velocity_host_mirror,
+                                  velocity_subview);
+
+                // Print
+            }
         }
     }
 

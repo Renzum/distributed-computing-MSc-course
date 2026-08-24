@@ -19,7 +19,10 @@ class MPILayer {
     };
 
     GhostLayers ghost_layers{};
-    int lattice_width, lattice_height;
+    int local_lattice_width, local_lattice_height;
+
+    // The MPI node's actual x and y offsets in relation to the global lattice
+    int global_lattice_offset_x, global_lattice_offset_y;
 
     MPILayer(int domain_width, int domain_height);
 
