@@ -3,6 +3,7 @@ struct Arguments {
     int domain_height = 0;
     int iterations = 1000;
     bool print_final = false;
+    int heartbeat = 0;
 };
 
 Arguments get_cmd_args(int argc, char *argv[]);

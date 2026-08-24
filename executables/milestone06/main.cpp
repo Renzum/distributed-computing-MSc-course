@@ -36,6 +36,10 @@ Arguments get_cmd_args(int argc, char *argv[]) {
         if (strncmp(argv[i], "--print-final", 13) == 0) {
             args.print_final = true;
         }
+
+        if (strncmp(argv[i], "--heartbeat", 11) == 0) {
+            args.heartbeat = std::stoi(argv[++i]);
+        }
     }
 
     if (args.domain_width == 0 || args.domain_height == 0 ||
@@ -157,6 +161,11 @@ int main(int argc, char *argv[]) {
             auto timer = Kokkos::Timer();
 
             for (int i = 0; i < iterations; i++) {
+                if (args.heartbeat > 0) {
+                    if (i % args.heartbeat == 0)
+                        std::cout << "Heartbeat Iteration: " << i << std::endl;
+                }
+
                 LatticeBoltzmann::calculate_equilibrium_distribution(
                     buffer_distribution, density_function, velocity_profile);
                 LatticeBoltzmann::relax_distribution(
