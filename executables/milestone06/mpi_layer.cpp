@@ -48,24 +48,24 @@ MPILayer::MPILayer(int domain_width, int domain_height) {
         local_lattice_height += domain_height % mpi_data->dims[0];
     }
 
-    if (mpi_data->dims[1] > 1) {
+    if (mpi_data->coords[1] > 0) {
         global_lattice_offset_x =
             static_cast<int>(domain_width / mpi_data->dims[1]) *
             mpi_data->coords[1];
         // Since the leftmost nodes of each row in the MPI decomposition will
         // include the remainder of the domain_width / mpi_x_dimension, we need
         // to add it to the offset if the node isn't the leftmost of it's row
-        if (mpi_data->coords[1] > 0) {
-            global_lattice_offset_x += domain_width % mpi_data->dims[1];
-        }
+        global_lattice_offset_x += domain_width % mpi_data->dims[1];
     } else {
         global_lattice_offset_x = 0;
     }
 
-    if (mpi_data->dims[0] > 1) {
+    const int mpi_inverted_y_coord =
+        mpi_data->dims[0] - mpi_data->coords[0] - 1;
+    if (mpi_inverted_y_coord > 0) {
         global_lattice_offset_y =
             static_cast<int>(domain_height / mpi_data->dims[0]) *
-            (mpi_data->dims[0] - mpi_data->coords[0] - 1);
+            mpi_inverted_y_coord;
         // We don't have a corner case for the remainder here since it is only
         // present in the top most node of each column, so it doesn't affect any
         // of the other nodes in the column

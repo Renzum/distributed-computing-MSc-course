@@ -8,6 +8,7 @@
 #include <mpi.h>
 
 #include <direction_definitions.hpp>
+#include <distributed_velocity_profile_printing.hpp>
 #include <distribution_initializers.hpp>
 #include <lattice_boltzmann.hpp>
 #include <mpi_layer.hpp>
@@ -70,12 +71,20 @@ int main(int argc, char *argv[]) {
 
             std::cout << fmt::format(
                              "I'm node with rank {:d}, coordinates [{:d}, "
-                             "{:d}] and dimensions {:d}x{:d}",
+                             "{:d}] and dimensions {:d}x{:d} ({:d}x{:d} "
+                             "without ghost "
+                             "layers)",
                              mpi_layer.mpi_data->rank,
                              mpi_layer.mpi_data->coords[0],
                              mpi_layer.mpi_data->coords[1],
                              mpi_layer.local_lattice_height,
-                             mpi_layer.local_lattice_width)
+                             mpi_layer.local_lattice_width,
+                             mpi_layer.local_lattice_width -
+                                 mpi_layer.ghost_layers.left -
+                                 mpi_layer.ghost_layers.right,
+                             mpi_layer.local_lattice_height -
+                                 mpi_layer.ghost_layers.down -
+                                 mpi_layer.ghost_layers.up)
                       << std::endl;
 
             const double omega = 1.2;
@@ -158,28 +167,10 @@ int main(int argc, char *argv[]) {
                       << std::endl;
 
             if (args.print_final) {
-                auto velocity_subview = Kokkos::subview(
-                    velocity_profile,
-                    std::make_pair(mpi_layer.ghost_layers.left,
-                                   mpi_layer.local_lattice_width -
-                                       mpi_layer.ghost_layers.right),
-                    std::make_pair(mpi_layer.ghost_layers.down,
-                                   mpi_layer.local_lattice_height -
-                                       mpi_layer.ghost_layers.up),
-                    Kokkos::ALL);
+                DistributedVelocityOutput output("mpi_velocity_profile.data",
+                                                 mpi_layer);
 
-                auto actual_velocity_host_mirror =
-                    Kokkos::create_mirror_view(velocity_subview);
-
-                std::cout << fmt::format("Subview dimensions [{:d}, {:d}]",
-                                         velocity_subview.extent_int(0),
-                                         velocity_subview.extent_int(1))
-                          << std::endl;
-
-                Kokkos::deep_copy(actual_velocity_host_mirror,
-                                  velocity_subview);
-
-                // Print
+                output.print_velocity_profile(velocity_profile, iterations - 1);
             }
         }
     }
