@@ -51,34 +51,33 @@ class DistributedVelocityOutput {
     void
     print_velocity_profile(LatticeBoltzmann::VelocityProfile velocity_profile,
                            int iteration) {
-        auto velocity_subview = Kokkos::subview(
-            velocity_profile,
-            std::make_pair(actual_lattice_x_start, actual_lattice_x_end),
-            std::make_pair(actual_lattice_y_start, actual_lattice_y_end),
+        auto velocity_profile_host_mirror =
+            Kokkos::create_mirror_view(velocity_profile);
+
+        Kokkos::deep_copy(velocity_profile_host_mirror, velocity_profile);
+
+        auto actual_velocity_profile = Kokkos::subview(
+            velocity_profile_host_mirror,
+            Kokkos::make_pair(actual_lattice_x_start, actual_lattice_x_end),
+            Kokkos::make_pair(actual_lattice_y_start, actual_lattice_y_end),
             Kokkos::ALL);
 
-        auto actual_velocity_host_mirror =
-            Kokkos::create_mirror_view(velocity_subview);
+        int width = actual_velocity_profile.extent_int(0);
+        int height = actual_velocity_profile.extent_int(1);
 
-        std::cout << fmt::format("Subview dimensions [{:d}, {:d}]",
-                                 actual_velocity_host_mirror.extent_int(0),
-                                 actual_velocity_host_mirror.extent_int(1))
+        std::cout << fmt::format("Subview dimensions [{:d}, {:d}]", width,
+                                 height)
                   << std::endl;
 
-        Kokkos::deep_copy(actual_velocity_host_mirror, velocity_subview);
-
         file << "--- i:" << iteration;
-
-        int width = actual_velocity_host_mirror.extent_int(0);
-        int height = actual_velocity_host_mirror.extent_int(1);
 
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 file << fmt::format("\n{:d},{:d},{:f},{:f}",
                                     x + global_lattice_offset_x,
                                     y + global_lattice_offset_y,
-                                    actual_velocity_host_mirror(x, y, 0),
-                                    actual_velocity_host_mirror(x, y, 1));
+                                    actual_velocity_profile(x, y, 0),
+                                    actual_velocity_profile(x, y, 1));
             }
         }
 
