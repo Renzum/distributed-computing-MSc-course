@@ -30,16 +30,6 @@ void relax_distribution(
     const DistributionFunction &equilibrium_distribution_function,
     const double omega);
 
-/**
- * Assumes a single layer of ghost nodes exists on the edges of the lattice
- *
- * Will treat all the edges of the lattice as fixed walls except for the top
- * wall. A lid velocity modifier view needs to be provided which corresponds to
- * the correction term of the rigid wall according to each direction index
- *
- * To treat the top wall as a fixed one instead of moving, simply initialize the
- * `lid_velocity_modifiers` as all 0
- */
 void streaming_step_with_bounce_back_and_lid(
     DistributionFunction &buffer_distribution_view,
     DistributionFunction &distribution_function,

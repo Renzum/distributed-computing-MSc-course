@@ -123,7 +123,7 @@ void MPINotGPUAware::communicate_up(
     if (mpi_data->bottom_neighbor != MPI_PROC_NULL) {
 
         auto bottom_recv_subview =
-            Kokkos::subview(distribution_function, Kokkos::ALL, 1, Kokkos::ALL);
+            Kokkos::subview(distribution_function, Kokkos::ALL, 0, Kokkos::ALL);
 
         Kokkos::deep_copy(down_up_gpu_buffer, down_up_recv_buffer);
         Kokkos::deep_copy(bottom_recv_subview, down_up_gpu_buffer);

@@ -91,27 +91,48 @@ int main(int argc, char *argv[]) {
 
             const double lid_vel_x = 0.1, lid_vel_y = 0.0;
 
+            // If there is no right neighbor, the right wall is a
+            // bounce-back
+            auto right_wall =
+                (mpi_layer.ghost_layers.right == 0)
+                    ? LatticeBoltzmann::
+                          Wall{LatticeBoltzmann::BoundaryType::BounceBack}
+                    : LatticeBoltzmann::Wall{
+                          LatticeBoltzmann::BoundaryType::Periodic};
+
+            // If there is no down neighbor, the bottom wall is a
+            // bounce-back
+            auto bottom_wall =
+                (mpi_layer.ghost_layers.down == 0)
+                    ? LatticeBoltzmann::
+                          Wall{LatticeBoltzmann::BoundaryType::BounceBack}
+                    : LatticeBoltzmann::Wall{
+                          LatticeBoltzmann::BoundaryType::Periodic};
+
+            // If there is no left neighbor, the left wall is a
+            // bounce-back
+            auto left_wall =
+                (mpi_layer.ghost_layers.left == 0)
+                    ? LatticeBoltzmann::
+                          Wall{LatticeBoltzmann::BoundaryType::BounceBack}
+                    : LatticeBoltzmann::Wall{
+                          LatticeBoltzmann::BoundaryType::Periodic};
+
+            // If there is no up neighbor, the top wall is a
+            // moving lid
+            auto top_wall =
+                (mpi_layer.ghost_layers.up == 0)
+                    ? LatticeBoltzmann::
+                          Wall{LatticeBoltzmann::BoundaryType::BounceBack,
+                               lid_vel_x, lid_vel_y}
+                    : LatticeBoltzmann::Wall{
+                          LatticeBoltzmann::BoundaryType::Periodic};
+
             LatticeBoltzmann::Walls walls{
-                // If there is no right neighbor, the right wall is a
-                // bounce-back
-                (mpi_layer.ghost_layers.right != 0)
-                    ? LatticeBoltzmann::Wall{ 
-                          LatticeBoltzmann::BoundaryType::Periodic, }
-                    : LatticeBoltzmann::Wall{ 
-                          LatticeBoltzmann::BoundaryType::BounceBack, 0, 0, },
-                // If there is no down neighbor, the bottom wall is a
-                // bounce-back
-                (mpi_layer.ghost_layers.down != 0) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic,}
-                                             : LatticeBoltzmann::Wall{ LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
-                // If there is no left neighbor, the left wall is a
-                // bounce-back (otherwise periodic)
-                (mpi_layer.ghost_layers.left != 0) ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
-                                             : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, 0, 0 ,},
-                // If there is no up neighbor, the top wall is a
-                // moving lid (otherwise periodic)
-                (mpi_layer.ghost_layers.up != 0)
-                    ? LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::Periodic}
-                    : LatticeBoltzmann::Wall{LatticeBoltzmann::BoundaryType::BounceBack, lid_vel_x, lid_vel_y ,},
+                right_wall,
+                bottom_wall,
+                left_wall,
+                top_wall,
             };
 
             LatticeBoltzmann::DistributionFunction distribution_function(
